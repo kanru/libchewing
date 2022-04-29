@@ -121,6 +121,7 @@ doc/libchewing.vrs
 /CMakeCache.txt
 /CMakeFiles/
 /cmake_install.cmake
+/build
 
 # Visual Studio
 *.pdb
@@ -149,5 +150,4 @@ contrib/test.sqlite3
 
 
 # Added by cargo
-
 /target

@@ -146,3 +146,8 @@ contrib/test.sqlite3
 
 # python
 *.pyc
+
+
+# Added by cargo
+
+/target

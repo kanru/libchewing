@@ -29,6 +29,11 @@
 #include "pinyin-private.h"
 #include "private.h"
 
+#ifdef HAVE_RUST
+
+#include "chewing_internal.h"
+
+#else
 /*
  * process a key input
  * return value:
@@ -50,6 +55,7 @@ static int IsHsuPhoEndKey(const int pho_inx[], int key)
         return 0;
     }
 }
+#endif
 
 /* copy the idea from HSU keyboard */
 static int IsET26PhoEndKey(const int pho_inx[], int key)

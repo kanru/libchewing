@@ -64,6 +64,7 @@ endif()
 add_definitions(-DHAVE_CONFIG_H=1)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 
+option(WITH_RUST "Use rust implementation" true)
 option(WITH_SQLITE3 "Use sqlite3 to store userphrase" true)
 option(WITH_INTERNAL_SQLITE3 "Use internal sqlite3" false)
 if(MSVC)
@@ -79,6 +80,10 @@ check_type_size(uint16_t UINT16_T)
 
 set(CURSES_NEED_WIDE true)
 find_package(Curses)
+
+if (WITH_RUST)
+    find_package(Rust)
+endif()
 
 if (WITH_SQLITE3)
     if (WITH_INTERNAL_SQLITE3)
@@ -365,6 +370,16 @@ set_target_properties(chewing PROPERTIES
     COMPILE_DEFINITIONS "CHEWING_DATADIR=\"${CMAKE_INSTALL_FULL_DATADIR}/libchewing\""
 )
 
+if (WITH_RUST)
+    add_rust_library(TARGET chewing_internal WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    target_include_directories(chewing PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+    add_definitions(-DHAVE_RUST)
+    add_dependencies(chewing chewing_internal)
+    foreach(target ${ALL_TESTS})
+        target_link_libraries(${target} chewing_internal)
+    endforeach()
+endif()
+
 if (WITH_SQLITE3)
     add_library(userphrase STATIC
         ${INC_DIR}/internal/chewing-sql.h
@@ -427,6 +442,9 @@ if (NOT BUILD_DLL)
 endif()
 
 foreach(lib ${LIBS})
+    if (WITH_RUST)
+        target_link_libraries(${lib} chewing_internal)
+    endif()
     target_link_libraries(${lib} userphrase)
     if (WITH_SQLITE3 AND NOT WITH_INTERNAL_SQLITE3)
         target_link_libraries(${lib} ${SQLITE3_LIBRARY})
@@ -449,7 +467,6 @@ add_library(common OBJECT
     ${SRC_DIR}/common/chewing-utf8-util.c
     ${SRC_DIR}/common/key2pho.c
 )
-
 
 # install
 install(FILES ${ALL_DATA} DESTINATION ${CMAKE_INSTALL_DATADIR}/libchewing)

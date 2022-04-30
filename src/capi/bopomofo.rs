@@ -1,34 +1,34 @@
 use std::slice;
 
-use crate::keymap::{
-    hsu::{is_hsu_end_key, KeyBuf},
-    KeyIndexFromQwerty,
+use crate::{
+    editor::phonetic::{hsu::Hsu, KeyBehavior, PhoneticKeyEditor},
+    keymap::{IdentityKeymap, KeyIndexFromQwerty, Keymap, QWERTY},
 };
 
 #[no_mangle]
-pub extern "C" fn IsHsuPhoEndKey(pho_inx: *const i32, key: i32) -> bool {
-    let pho_inx = unsafe { slice::from_raw_parts(pho_inx, 4) };
-    let key_buf = KeyBuf(
-        if pho_inx[0] != 0 {
-            Some((pho_inx[0] as u8).as_key_index())
-        } else {
-            None
-        },
-        if pho_inx[1] != 0 {
-            Some((pho_inx[1] as u8).as_key_index())
-        } else {
-            None
-        },
-        if pho_inx[2] != 0 {
-            Some((pho_inx[2] as u8).as_key_index())
-        } else {
-            None
-        },
-        if pho_inx[3] != 0 {
-            Some((pho_inx[3] as u8).as_key_index())
-        } else {
-            None
-        },
-    );
-    is_hsu_end_key(key_buf, (key as u8).as_key_index())
+pub extern "C" fn HsuPhoInputRust(pho_inx: *mut i32, key: i32) -> KeyBehavior {
+    let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
+    let mut hsu = Hsu::from_raw_parts(pho_inx);
+    let keymap = IdentityKeymap::new(QWERTY);
+    let key_code = (key as u8).as_key_code();
+    let event = keymap.map_key(key_code);
+    let result = hsu.key_press(event);
+    let key_buf = hsu.read();
+    pho_inx[0] = match key_buf.0 {
+        Some(b) => b.initial_index(),
+        None => 0,
+    };
+    pho_inx[1] = match key_buf.1 {
+        Some(b) => b.medial_index(),
+        None => 0,
+    };
+    pho_inx[2] = match key_buf.2 {
+        Some(b) => b.final_index(),
+        None => 0,
+    };
+    pho_inx[3] = match key_buf.3 {
+        Some(b) => b.tone_index(),
+        None => 0,
+    };
+    result
 }

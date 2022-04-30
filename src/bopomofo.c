@@ -97,6 +97,7 @@ static int IsDefPhoEndKey(int key, int kbtype)
     return 0;
 }
 
+// TODO this should be handled by the line editor
 static int EndKeyProcess(ChewingData *pgdata, int key, int searchTimes)
 {
     BopomofoData *pBopomofo = &(pgdata->bopomofoData);
@@ -177,6 +178,21 @@ static int DefPhoInput(ChewingData *pgdata, int key)
     pBopomofo->pho_inx[type] = inx;
     return BOPOMOFO_ABSORB;
 }
+
+#ifdef HAVE_RUST
+
+static int HsuPhoInput(ChewingData *pgdata, int key)
+{
+    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
+    int result = HsuPhoInputRust(pBopomofo->pho_inx, key);
+    if (result == 7) {
+        int searchTimes = (key == 'j') ? 3 : 2;
+        return EndKeyProcess(pgdata, key, searchTimes);
+    }
+    return result;
+}
+
+#else
 
 static int HsuPhoInput(ChewingData *pgdata, int key)
 {
@@ -291,6 +307,7 @@ static int HsuPhoInput(ChewingData *pgdata, int key)
         return BOPOMOFO_ABSORB;
     }
 }
+#endif
 
 /* copy the idea from hsu */
 static int ET26PhoInput(ChewingData *pgdata, int key)

@@ -102,16 +102,13 @@ const QWERTY_INDEX: [u8; 48] = [
 ];
 
 pub trait KeyIndexFromQwerty {
-    fn as_key_code(&self) -> KeyCode;
+    fn as_key_code(&self) -> Option<KeyCode>;
 }
 
 impl KeyIndexFromQwerty for u8 {
-    fn as_key_code(&self) -> KeyCode {
-        let position = QWERTY_INDEX
-            .iter()
-            .position(|key| key == self)
-            .expect("invalide keycode");
-        QWERTY.map[position]
+    fn as_key_code(&self) -> Option<KeyCode> {
+        let position = QWERTY_INDEX.iter().position(|key| key == self);
+        position.map(|pos| QWERTY.map[pos])
     }
 }
 

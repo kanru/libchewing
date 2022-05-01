@@ -4,7 +4,7 @@
 //!
 //! Traditionally the keyboards sold in Chinese speaking region have
 //! both the English alphabets and Zhuyin symbols printed on the keys.
-//! Like English keyboards can have different layouts (QWERTY, DVORAK, etc.),
+//! Like English keyboards can have different layouts (QWERTY, Dvorak, etc.),
 //! Zhuyin keyboards also have different layouts.
 //!
 //! The most widely used Zhuyin layout is the one directly printed on the keyboards.
@@ -20,7 +20,9 @@ use std::ops::Shl;
 use crate::{bopomofo::Bopomofo, keymap::KeyEvent};
 
 pub mod hsu;
+pub mod standard;
 
+#[derive(Debug, PartialEq)]
 #[repr(C)]
 pub enum KeyBehavior {
     Ignore = 0,

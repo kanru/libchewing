@@ -104,7 +104,7 @@ pub enum Bopomofo {
     TONE3,
     /// ˋ
     TONE4,
-    /// ˊ
+    /// ˙
     TONE5,
 }
 
@@ -115,7 +115,7 @@ const INITIAL_MAP: [Bopomofo; 21] = [
 ];
 const MEDIAL_MAP: [Bopomofo; 3] = [I, U, IU];
 const FINAL_MAP: [Bopomofo; 13] = [A, O, E, EH, AI, EI, AU, OU, AN, EN, ANG, ENG, ER];
-const TONE_MAP: [Bopomofo; 5] = [TONE1, TONE2, TONE3, TONE4, TONE5];
+const TONE_MAP: [Bopomofo; 4] = [TONE5, TONE2, TONE3, TONE4];
 
 impl Bopomofo {
     pub fn kind(&self) -> BopomofoKind {
@@ -137,7 +137,7 @@ impl Bopomofo {
         FINAL_MAP[(index - 1) as usize]
     }
     pub fn from_tone(index: i32) -> Bopomofo {
-        TONE_MAP[index as usize]
+        TONE_MAP[(index - 1) as usize]
     }
 
     pub fn initial_index(&self) -> i32 {

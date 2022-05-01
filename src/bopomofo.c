@@ -87,6 +87,8 @@ static int IsDACHENCP26PhoEndKey(const int pho_inx[], int key)
     }
 }
 
+#ifndef HAVE_RUST
+
 static int IsDefPhoEndKey(int key, int kbtype)
 {
     if (PhoneInxFromKey(key, 3, kbtype, 1))
@@ -96,6 +98,8 @@ static int IsDefPhoEndKey(int key, int kbtype)
         return 1;
     return 0;
 }
+
+#endif
 
 // TODO this should be handled by the line editor
 static int EndKeyProcess(ChewingData *pgdata, int key, int searchTimes)
@@ -146,6 +150,31 @@ static int EndKeyProcess(ChewingData *pgdata, int key, int searchTimes)
     return BOPOMOFO_COMMIT;
 }
 
+#ifdef HAVE_RUST
+
+static int DefPhoInput(ChewingData *pgdata, int key)
+{
+    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
+    int result = StandardInputRust(pBopomofo->pho_inx, key);
+    if (result == 7) {
+        return EndKeyProcess(pgdata, key, 1);
+    }
+    return result;
+}
+
+static int HsuPhoInput(ChewingData *pgdata, int key)
+{
+    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
+    int result = HsuPhoInputRust(pBopomofo->pho_inx, key);
+    if (result == 7) {
+        int searchTimes = (key == 'j') ? 3 : 2;
+        return EndKeyProcess(pgdata, key, searchTimes);
+    }
+    return result;
+}
+
+#else
+
 static int DefPhoInput(ChewingData *pgdata, int key)
 {
     BopomofoData *pBopomofo = &(pgdata->bopomofoData);
@@ -178,21 +207,6 @@ static int DefPhoInput(ChewingData *pgdata, int key)
     pBopomofo->pho_inx[type] = inx;
     return BOPOMOFO_ABSORB;
 }
-
-#ifdef HAVE_RUST
-
-static int HsuPhoInput(ChewingData *pgdata, int key)
-{
-    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
-    int result = HsuPhoInputRust(pBopomofo->pho_inx, key);
-    if (result == 7) {
-        int searchTimes = (key == 'j') ? 3 : 2;
-        return EndKeyProcess(pgdata, key, searchTimes);
-    }
-    return result;
-}
-
-#else
 
 static int HsuPhoInput(ChewingData *pgdata, int key)
 {

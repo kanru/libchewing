@@ -3,8 +3,6 @@
 //! Also known as the Dai Chien (大千) layout. It's the default layout on almost
 //! all platforms and the most commonly used one.
 
-use std::mem;
-
 use crate::{
     bopomofo::{Bopomofo, BopomofoKind},
     keymap::{KeyEvent, KeyIndex},
@@ -19,33 +17,12 @@ pub struct Standard {
 impl Standard {
     pub fn new() -> Standard {
         Standard {
-            key_buf: KeyBuf(None, None, None, None),
+            key_buf: Default::default(),
         }
     }
     pub fn from_raw_parts(pho_inx: &[i32]) -> Standard {
         Standard {
-            key_buf: KeyBuf(
-                if pho_inx[0] == 0 {
-                    None
-                } else {
-                    Some(Bopomofo::from_initial(pho_inx[0]))
-                },
-                if pho_inx[1] == 0 {
-                    None
-                } else {
-                    Some(Bopomofo::from_medial(pho_inx[1]))
-                },
-                if pho_inx[2] == 0 {
-                    None
-                } else {
-                    Some(Bopomofo::from_final(pho_inx[2]))
-                },
-                if pho_inx[3] == 0 {
-                    None
-                } else {
-                    Some(Bopomofo::from_tone(pho_inx[3]))
-                },
-            ),
+            key_buf: KeyBuf::from_raw_parts(pho_inx),
         }
     }
 }
@@ -127,13 +104,13 @@ impl PhoneticKeyEditor for Standard {
 
     fn pop(&mut self) -> Option<Bopomofo> {
         if self.key_buf.3.is_some() {
-            return mem::replace(&mut self.key_buf.3, None);
+            return self.key_buf.3.take();
         } else if self.key_buf.2.is_some() {
-            return mem::replace(&mut self.key_buf.2, None);
+            return self.key_buf.2.take();
         } else if self.key_buf.1.is_some() {
-            return mem::replace(&mut self.key_buf.1, None);
+            return self.key_buf.1.take();
         } else if self.key_buf.0.is_some() {
-            return mem::replace(&mut self.key_buf.0, None);
+            return self.key_buf.0.take();
         }
         None
     }

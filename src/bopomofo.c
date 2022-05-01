@@ -55,7 +55,6 @@ static int IsHsuPhoEndKey(const int pho_inx[], int key)
         return 0;
     }
 }
-#endif
 
 /* copy the idea from HSU keyboard */
 static int IsET26PhoEndKey(const int pho_inx[], int key)
@@ -71,6 +70,8 @@ static int IsET26PhoEndKey(const int pho_inx[], int key)
         return 0;
     }
 }
+#endif
+
 
 /* copy the idea from HSU keyboard */
 static int IsDACHENCP26PhoEndKey(const int pho_inx[], int key)
@@ -168,6 +169,17 @@ static int HsuPhoInput(ChewingData *pgdata, int key)
     int result = HsuPhoInputRust(pBopomofo->pho_inx, key);
     if (result == 7) {
         int searchTimes = (key == 'j') ? 3 : 2;
+        return EndKeyProcess(pgdata, key, searchTimes);
+    }
+    return result;
+}
+
+static int ET26PhoInput(ChewingData *pgdata, int key)
+{
+    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
+    int result = Et26PhoInputRust(pBopomofo->pho_inx, key);
+    if (result == 7) {
+        int searchTimes = 2;
         return EndKeyProcess(pgdata, key, searchTimes);
     }
     return result;
@@ -321,7 +333,6 @@ static int HsuPhoInput(ChewingData *pgdata, int key)
         return BOPOMOFO_ABSORB;
     }
 }
-#endif
 
 /* copy the idea from hsu */
 static int ET26PhoInput(ChewingData *pgdata, int key)
@@ -418,6 +429,7 @@ static int ET26PhoInput(ChewingData *pgdata, int key)
         return BOPOMOFO_ABSORB;
     }
 }
+#endif
 
 static int SwitchingBetween(int *pho_idx, int a, int b)
 {

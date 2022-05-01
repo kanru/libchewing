@@ -19,6 +19,7 @@ use std::ops::Shl;
 
 use crate::{bopomofo::Bopomofo, keymap::KeyEvent};
 
+pub mod et26;
 pub mod hsu;
 pub mod standard;
 
@@ -35,7 +36,7 @@ pub enum KeyBehavior {
     TryCommit,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct KeyBuf(
     pub Option<Bopomofo>,
     pub Option<Bopomofo>,
@@ -49,6 +50,30 @@ impl KeyBuf {
             + (self.1.unwrap_or(Bopomofo::B) as u16).shl(7)
             + (self.2.unwrap_or(Bopomofo::B) as u16).shl(3)
             + (self.3.unwrap_or(Bopomofo::B) as u16)
+    }
+    pub fn from_raw_parts(pho_inx: &[i32]) -> KeyBuf {
+        KeyBuf(
+            if pho_inx[0] == 0 {
+                None
+            } else {
+                Some(Bopomofo::from_initial(pho_inx[0]))
+            },
+            if pho_inx[1] == 0 {
+                None
+            } else {
+                Some(Bopomofo::from_medial(pho_inx[1]))
+            },
+            if pho_inx[2] == 0 {
+                None
+            } else {
+                Some(Bopomofo::from_final(pho_inx[2]))
+            },
+            if pho_inx[3] == 0 {
+                None
+            } else {
+                Some(Bopomofo::from_tone(pho_inx[3]))
+            },
+        )
     }
 }
 

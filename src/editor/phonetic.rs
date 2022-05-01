@@ -19,6 +19,7 @@ use std::ops::Shl;
 
 use crate::{bopomofo::Bopomofo, keymap::KeyEvent};
 
+pub mod dc26;
 pub mod et26;
 pub mod hsu;
 pub mod standard;

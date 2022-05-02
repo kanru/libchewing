@@ -22,6 +22,7 @@ use crate::{bopomofo::Bopomofo, keymap::KeyEvent};
 pub mod dc26;
 pub mod et26;
 pub mod hsu;
+pub mod pinyin;
 pub mod standard;
 
 #[derive(Debug, PartialEq)]

@@ -73,7 +73,7 @@ impl PhoneticKeyEditor for Et26 {
                     _ => (),
                 }
             }
-            return KeyBehavior::TryCommit;
+            KeyBehavior::TryCommit
         } else {
             let bopomofo = match key.code {
                 KeyCode::A => Bopomofo::A,
@@ -165,13 +165,8 @@ impl PhoneticKeyEditor for Et26 {
                             }
                             _ => (),
                         }
-                    } else {
-                        match self.key_buf.0 {
-                            Some(Bopomofo::G) => {
-                                self.key_buf.0.replace(Bopomofo::Q);
-                            }
-                            _ => (),
-                        }
+                    } else if let Some(Bopomofo::G) = self.key_buf.0 {
+                        self.key_buf.0.replace(Bopomofo::Q);
                     }
                 }
                 BopomofoKind::Final if self.key_buf.1.is_none() => {

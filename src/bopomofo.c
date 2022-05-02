@@ -192,6 +192,27 @@ static int DACHENCP26PhoInput(ChewingData *pgdata, int key)
     return result;
 }
 
+static int PinYinInput(ChewingData *pgdata, int key)
+{
+    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
+    int result = PinYinInputRust(pBopomofo->kbtype, pBopomofo->pinYinData.keySeq, pBopomofo->pho_inx, pBopomofo->pho_inx_alt, key);
+    if (result == 7) {
+        int searchTimes = 1;
+        switch (key) {
+        case '1':
+            key = ' ';
+            break;
+        case '2':
+            key = '6';
+            break;
+        case '5':
+            key = '7';
+        }
+        return EndKeyProcess(pgdata, key, searchTimes);
+    }
+    return result;
+}
+
 #else
 
 static int DefPhoInput(ChewingData *pgdata, int key)
@@ -572,7 +593,6 @@ static int DACHENCP26PhoInput(ChewingData *pgdata, int key)
         return BOPOMOFO_ABSORB;
     }
 }
-#endif
 
 static int IsPinYinEndKey(int key)
 {
@@ -680,6 +700,7 @@ static int PinYinInput(ChewingData *pgdata, int key)
 
     return BOPOMOFO_ABSORB;
 }
+#endif
 
 /* key: ascii code of input, including space */
 int BopomofoPhoInput(ChewingData *pgdata, int key)

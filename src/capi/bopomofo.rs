@@ -1,212 +1,211 @@
 use std::{
-    ffi::{CStr, CString},
+    ffi::{c_void, CString},
     os::raw::c_char,
     slice,
 };
 
 use crate::{
     editor::phonetic::{
-        dc26::DaiChien26,
-        et26::Et26,
-        hsu::Hsu,
-        pinyin::{Pinyin, PinyinVariant},
-        standard::Standard,
-        KeyBehavior, PhoneticKeyEditor,
+        dc26::DaiChien26, et26::Et26, hsu::Hsu, pinyin::Pinyin, standard::Standard, KeyBehavior,
+        KeyboardLayoutCompat, PhoneticKeyEditor,
     },
-    keymap::{IdentityKeymap, KeyIndexFromQwerty, Keymap, QWERTY},
+    keymap::{IdentityKeymap, KeyCode, KeyIndexFromQwerty, Keymap, QWERTY},
 };
 
-#[no_mangle]
-pub extern "C" fn StandardInputRust(pho_inx: *mut i32, key: i32) -> KeyBehavior {
-    let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
-    let mut editor = Standard::from_raw_parts(pho_inx);
-    let keymap = IdentityKeymap::new(QWERTY);
-    let key_code = match (key as u8).as_key_code() {
-        Some(key_code) => key_code,
-        None => return KeyBehavior::KeyError,
-    };
-    let event = keymap.map_key(key_code);
-    let result = editor.key_press(event);
-    let key_buf = editor.read();
-    pho_inx[0] = match key_buf.0 {
-        Some(b) => b.initial_index(),
-        None => 0,
-    };
-    pho_inx[1] = match key_buf.1 {
-        Some(b) => b.medial_index(),
-        None => 0,
-    };
-    pho_inx[2] = match key_buf.2 {
-        Some(b) => b.final_index(),
-        None => 0,
-    };
-    pho_inx[3] = match key_buf.3 {
-        Some(b) => b.tone_index(),
-        None => 0,
-    };
-    result
+#[derive(Debug)]
+#[repr(C)]
+pub struct PhoneticKeyEditorWithKeymap {
+    kb_type: KeyboardLayoutCompat,
+    keymap: Box<dyn Keymap>,
+    editor: Box<dyn PhoneticKeyEditor>,
 }
 
 #[no_mangle]
-pub extern "C" fn Et26PhoInputRust(pho_inx: *mut i32, key: i32) -> KeyBehavior {
-    let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
-    let mut editor = Et26::from_raw_parts(pho_inx);
-    let keymap = IdentityKeymap::new(QWERTY);
-    let key_code = match (key as u8).as_key_code() {
-        Some(key_code) => key_code,
-        None => return KeyBehavior::KeyError,
+pub extern "C" fn NewPhoneticEditor(kb_type: KeyboardLayoutCompat) -> *mut c_void {
+    use KeyboardLayoutCompat as KB;
+    let editor: Box<PhoneticKeyEditorWithKeymap> = match kb_type {
+        KB::Default => Box::new(PhoneticKeyEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(Standard::new()),
+        }),
+        KB::Hsu => Box::new(PhoneticKeyEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(Hsu::new()),
+        }),
+        KB::Ibm => todo!(),
+        KB::GinYieh => todo!(),
+        KB::Et => todo!(),
+        KB::Et26 => Box::new(PhoneticKeyEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(Et26::new()),
+        }),
+        KB::Dvorak => todo!(),
+        KB::DvorakHsu => todo!(),
+        KB::DachenCp26 => Box::new(PhoneticKeyEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(DaiChien26::new()),
+        }),
+        KB::HanyuPinyin => Box::new(PhoneticKeyEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(Pinyin::hanyu()),
+        }),
+        KB::ThlPinyin => Box::new(PhoneticKeyEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(Pinyin::thl()),
+        }),
+        KB::Mps2Pinyin => Box::new(PhoneticKeyEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(Pinyin::mps2()),
+        }),
+        KB::Carpalx => todo!(),
     };
-    let event = keymap.map_key(key_code);
-    let result = editor.key_press(event);
-    let key_buf = editor.read();
-    pho_inx[0] = match key_buf.0 {
-        Some(b) => b.initial_index(),
-        None => 0,
-    };
-    pho_inx[1] = match key_buf.1 {
-        Some(b) => b.medial_index(),
-        None => 0,
-    };
-    pho_inx[2] = match key_buf.2 {
-        Some(b) => b.final_index(),
-        None => 0,
-    };
-    pho_inx[3] = match key_buf.3 {
-        Some(b) => b.tone_index(),
-        None => 0,
-    };
-    result
+    Box::into_raw(editor).cast()
 }
 
 #[no_mangle]
-pub extern "C" fn HsuPhoInputRust(pho_inx: *mut i32, key: i32) -> KeyBehavior {
-    let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
-    let mut editor = Hsu::from_raw_parts(pho_inx);
-    let keymap = IdentityKeymap::new(QWERTY);
-    let key_code = match (key as u8).as_key_code() {
-        Some(key_code) => key_code,
-        None => return KeyBehavior::KeyError,
-    };
-    let event = keymap.map_key(key_code);
-    let result = editor.key_press(event);
-    let key_buf = editor.read();
-    pho_inx[0] = match key_buf.0 {
-        Some(b) => b.initial_index(),
-        None => 0,
-    };
-    pho_inx[1] = match key_buf.1 {
-        Some(b) => b.medial_index(),
-        None => 0,
-    };
-    pho_inx[2] = match key_buf.2 {
-        Some(b) => b.final_index(),
-        None => 0,
-    };
-    pho_inx[3] = match key_buf.3 {
-        Some(b) => b.tone_index(),
-        None => 0,
-    };
-    result
+pub extern "C" fn FreePhoneticEditor(editor_keymap_ptr: *mut c_void) {
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    unsafe { Box::from_raw(editor_keymap_ptr) };
 }
 
 #[no_mangle]
-pub extern "C" fn Dc26PhoInputRust(pho_inx: *mut i32, key: i32) -> KeyBehavior {
-    let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
-    let mut editor = DaiChien26::from_raw_parts(pho_inx);
-    let keymap = IdentityKeymap::new(QWERTY);
+pub extern "C" fn PhoneticEditorInput(editor_keymap_ptr: *mut c_void, key: i32) -> KeyBehavior {
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     let key_code = match (key as u8).as_key_code() {
         Some(key_code) => key_code,
         None => return KeyBehavior::KeyError,
     };
-    let event = keymap.map_key(key_code);
-    let result = editor.key_press(event);
-    let key_buf = editor.read();
-    pho_inx[0] = match key_buf.0 {
-        Some(b) => b.initial_index(),
-        None => 0,
-    };
-    pho_inx[1] = match key_buf.1 {
-        Some(b) => b.medial_index(),
-        None => 0,
-    };
-    pho_inx[2] = match key_buf.2 {
-        Some(b) => b.final_index(),
-        None => 0,
-    };
-    pho_inx[3] = match key_buf.3 {
-        Some(b) => b.tone_index(),
-        None => 0,
-    };
-    result
-}
+    let key_event = editor_keymap.keymap.map_key(key_code);
+    let result = editor_keymap.editor.key_press(key_event);
+    let key_buf = editor_keymap.editor.observe();
 
-#[no_mangle]
-pub extern "C" fn PinYinInputRust(
-    kb_type: i32,
-    key_seq: *mut c_char,
-    pho_inx: *mut i32,
-    pho_inx_alt: *mut i32,
-    key: i32,
-) -> KeyBehavior {
-    let key_seq_str = unsafe { CStr::from_ptr(key_seq) };
-    let key_seq_slice = unsafe { slice::from_raw_parts_mut(key_seq as *mut u8, 10) };
-    let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
-    let pho_inx_alt = unsafe { slice::from_raw_parts_mut(pho_inx_alt, 4) };
-    let kb_type = match kb_type {
-        9 => PinyinVariant::HanyuPinyin,
-        10 => PinyinVariant::ThlPinyin,
-        11 => PinyinVariant::Mps2Pinyin,
-        _ => panic!("non pinyin keyboard"),
-    };
-    let mut editor = Pinyin::from_raw_parts(kb_type, key_seq_str, pho_inx, pho_inx_alt);
-    let keymap = IdentityKeymap::new(QWERTY);
-    let key_code = match (key as u8).as_key_code() {
-        Some(key_code) => key_code,
-        None => return KeyBehavior::KeyError,
-    };
-    let event = keymap.map_key(key_code);
-    let result = editor.key_press(event);
-    if result == KeyBehavior::TryCommit {
-        key_seq_slice[0] = 0;
-        let key_buf = editor.read();
-        pho_inx[0] = match key_buf.0 {
-            Some(b) => b.initial_index(),
-            None => 0,
-        };
-        pho_inx[1] = match key_buf.1 {
-            Some(b) => b.medial_index(),
-            None => 0,
-        };
-        pho_inx[2] = match key_buf.2 {
-            Some(b) => b.final_index(),
-            None => 0,
-        };
-        pho_inx[3] = match key_buf.3 {
-            Some(b) => b.tone_index(),
-            None => 0,
-        };
-        let alt = editor.alt();
-        pho_inx_alt[0] = match alt.0 {
-            Some(b) => b.initial_index(),
-            None => 0,
-        };
-        pho_inx_alt[1] = match alt.1 {
-            Some(b) => b.medial_index(),
-            None => 0,
-        };
-        pho_inx_alt[2] = match alt.2 {
-            Some(b) => b.final_index(),
-            None => 0,
-        };
-        pho_inx_alt[3] = match alt.3 {
-            Some(b) => b.tone_index(),
-            None => 0,
-        };
-    } else {
-        dbg!(editor.key_seq());
-        let key_seq_cstr = CString::new(editor.key_seq().as_str()).unwrap();
-        let key_seq_bytes = key_seq_cstr.as_bytes_with_nul();
-        key_seq_slice[..key_seq_bytes.len()].copy_from_slice(key_seq_bytes);
+    if result == KeyBehavior::Commit {
+        if key_buf.is_empty() {
+            return if key_code == KeyCode::Space {
+                KeyBehavior::KeyError
+            } else {
+                KeyBehavior::NoWord
+            };
+        }
+        // FIXME make sure editors fills the tone
+        // FIXME if dictionary doesn't have a word, return NO_WORD
     }
+
     result
+}
+
+#[no_mangle]
+pub extern "C" fn PhoneticEditorSyllable(editor_keymap_ptr: *mut c_void, pho_inx: *mut i32) {
+    let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+    let key_buf = editor_keymap.editor.observe();
+
+    pho_inx[0] = match key_buf.0 {
+        Some(b) => b.initial_index(),
+        None => 0,
+    };
+    pho_inx[1] = match key_buf.1 {
+        Some(b) => b.medial_index(),
+        None => 0,
+    };
+    pho_inx[2] = match key_buf.2 {
+        Some(b) => b.final_index(),
+        None => 0,
+    };
+    pho_inx[3] = match key_buf.3 {
+        Some(b) => b.tone_index(),
+        None => 0,
+    };
+}
+
+#[no_mangle]
+pub extern "C" fn PhoneticEditorSyllableAlt(editor_keymap_ptr: *mut c_void, pho_inx: *mut i32) {
+    let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+    // FIXME
+    let key_buf = editor_keymap.editor.observe();
+
+    pho_inx[0] = match key_buf.0 {
+        Some(b) => b.initial_index(),
+        None => 0,
+    };
+    pho_inx[1] = match key_buf.1 {
+        Some(b) => b.medial_index(),
+        None => 0,
+    };
+    pho_inx[2] = match key_buf.2 {
+        Some(b) => b.final_index(),
+        None => 0,
+    };
+    pho_inx[3] = match key_buf.3 {
+        Some(b) => b.tone_index(),
+        None => 0,
+    };
+}
+
+#[no_mangle]
+pub extern "C" fn PhoneticEditorKeyseq(editor_keymap_ptr: *mut c_void, key_seq: *mut c_char) {
+    let key_seq = unsafe { slice::from_raw_parts_mut(key_seq as *mut u8, 10) };
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+    if let Some(key_seq_str) = editor_keymap.editor.key_seq() {
+        let key_seq_cstr = CString::new(key_seq_str).unwrap();
+        let key_seq_bytes = key_seq_cstr.as_bytes_with_nul();
+        key_seq[..key_seq_bytes.len()].copy_from_slice(key_seq_bytes);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn PhoneticEditorSyllableIndex(editor_keymap_ptr: *mut c_void) -> u16 {
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+    let key_buf = editor_keymap.editor.observe();
+    key_buf.encode()
+}
+
+#[no_mangle]
+pub extern "C" fn PhoneticEditorSyllableIndexAlt(editor_keymap_ptr: *mut c_void) -> u16 {
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+    // FIXME
+    let key_buf = editor_keymap.editor.observe();
+    key_buf.encode()
+}
+
+#[no_mangle]
+pub extern "C" fn PhoneticEditorRemoveLast(editor_keymap_ptr: *mut c_void) {
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+    editor_keymap.editor.pop();
+}
+
+#[no_mangle]
+pub extern "C" fn PhoneticEditorRemoveAll(editor_keymap_ptr: *mut c_void) {
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+    editor_keymap.editor.clear();
+}
+
+#[no_mangle]
+pub extern "C" fn PhoneticEditorKbType(editor_keymap_ptr: *mut c_void) -> i32 {
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+    editor_keymap.kb_type as i32
+}
+
+#[no_mangle]
+pub extern "C" fn PhoneticEditorIsEntering(editor_keymap_ptr: *mut c_void) -> bool {
+    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+    editor_keymap.editor.is_entering()
 }

@@ -33,6 +33,74 @@
 
 #include "chewing_internal.h"
 
+int BopomofoPhoInput(ChewingData *pgdata, int key)
+{
+    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
+
+    /* open symbol table */
+    if (key == '`')
+    {
+        pgdata->bSelect = 1;
+        pgdata->choiceInfo.oldChiSymbolCursor = pgdata->chiSymbolCursor;
+        HaninSymbolInput(pgdata);
+        return BOPOMOFO_OPEN_SYMBOL_TABLE;
+    }
+
+    return PhoneticEditorInput(pBopomofo->editorWithKeymap, key);
+}
+
+/* remove the latest key */
+int BopomofoRemoveLast(BopomofoData *pBopomofo)
+{
+    PhoneticEditorRemoveLast(pBopomofo->editorWithKeymap);
+    return 0;
+}
+
+/* remove all the key entered */
+int BopomofoRemoveAll(BopomofoData *pBopomofo)
+{
+    PhoneticEditorRemoveAll(pBopomofo->editorWithKeymap);
+    return 0;
+}
+
+int BopomofoKbType(BopomofoData *pBopomofo)
+{
+    return PhoneticEditorKbType(pBopomofo->editorWithKeymap);
+}
+
+int BopomofoPhoInx(BopomofoData *pBopomofo, int pho_inx[4])
+{
+    PhoneticEditorSyllable(pBopomofo->editorWithKeymap, pho_inx);
+    return 0;
+}
+
+int BopomofoPhoInxAlt(BopomofoData *pBopomofo, int pho_inx[4])
+{
+    PhoneticEditorSyllableAlt(pBopomofo->editorWithKeymap, pho_inx);
+    return 0;
+}
+
+int BopomofoKeyseq(BopomofoData *pBopomofo, char key_seq[10])
+{
+    PhoneticEditorKeyseq(pBopomofo->editorWithKeymap, key_seq);
+    return 0;
+}
+
+uint16_t BopomofoSyllableIndex(BopomofoData *pBopomofo)
+{
+    return PhoneticEditorSyllableIndex(pBopomofo->editorWithKeymap);
+}
+
+uint16_t BopomofoSyllableIndexAlt(BopomofoData *pBopomofo)
+{
+    return PhoneticEditorSyllableIndexAlt(pBopomofo->editorWithKeymap);
+}
+
+int BopomofoIsEntering(BopomofoData *pBopomofo)
+{
+    return PhoneticEditorIsEntering(pBopomofo->editorWithKeymap);
+}
+
 #else
 /*
  * process a key input
@@ -96,9 +164,6 @@ static int IsDefPhoEndKey(int key, int kbtype)
     return 0;
 }
 
-#endif
-
-// TODO this should be handled by the line editor
 static int EndKeyProcess(ChewingData *pgdata, int key, int searchTimes)
 {
     BopomofoData *pBopomofo = &(pgdata->bopomofoData);
@@ -146,74 +211,6 @@ static int EndKeyProcess(ChewingData *pgdata, int key, int searchTimes)
     memset(pBopomofo->pho_inx_alt, 0, sizeof(pBopomofo->pho_inx_alt));
     return BOPOMOFO_COMMIT;
 }
-
-#ifdef HAVE_RUST
-
-static int DefPhoInput(ChewingData *pgdata, int key)
-{
-    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
-    int result = StandardInputRust(pBopomofo->pho_inx, key);
-    if (result == 7) {
-        return EndKeyProcess(pgdata, key, 1);
-    }
-    return result;
-}
-
-static int HsuPhoInput(ChewingData *pgdata, int key)
-{
-    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
-    int result = HsuPhoInputRust(pBopomofo->pho_inx, key);
-    if (result == 7) {
-        int searchTimes = (key == 'j') ? 3 : 2;
-        return EndKeyProcess(pgdata, key, searchTimes);
-    }
-    return result;
-}
-
-static int ET26PhoInput(ChewingData *pgdata, int key)
-{
-    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
-    int result = Et26PhoInputRust(pBopomofo->pho_inx, key);
-    if (result == 7) {
-        int searchTimes = 2;
-        return EndKeyProcess(pgdata, key, searchTimes);
-    }
-    return result;
-}
-
-static int DACHENCP26PhoInput(ChewingData *pgdata, int key)
-{
-    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
-    int result = Dc26PhoInputRust(pBopomofo->pho_inx, key);
-    if (result == 7) {
-        int searchTimes = 2;
-        return EndKeyProcess(pgdata, key, searchTimes);
-    }
-    return result;
-}
-
-static int PinYinInput(ChewingData *pgdata, int key)
-{
-    BopomofoData *pBopomofo = &(pgdata->bopomofoData);
-    int result = PinYinInputRust(pBopomofo->kbtype, pBopomofo->pinYinData.keySeq, pBopomofo->pho_inx, pBopomofo->pho_inx_alt, key);
-    if (result == 7) {
-        int searchTimes = 1;
-        switch (key) {
-        case '1':
-            key = ' ';
-            break;
-        case '2':
-            key = '6';
-            break;
-        case '5':
-            key = '7';
-        }
-        return EndKeyProcess(pgdata, key, searchTimes);
-    }
-    return result;
-}
-
-#else
 
 static int DefPhoInput(ChewingData *pgdata, int key)
 {
@@ -700,7 +697,6 @@ static int PinYinInput(ChewingData *pgdata, int key)
 
     return BOPOMOFO_ABSORB;
 }
-#endif
 
 /* key: ascii code of input, including space */
 int BopomofoPhoInput(ChewingData *pgdata, int key)
@@ -777,3 +773,37 @@ int BopomofoIsEntering(BopomofoData *pBopomofo)
     }
     return 0;
 }
+
+int BopomofoKbType(BopomofoData *pBopomofo)
+{
+    return pBopomofo->kbtype;
+}
+
+int BopomofoPhoInx(BopomofoData *pBopomofo, int pho_inx[4])
+{
+    memcpy(pho_inx, pBopomofo->pho_inx, 4*sizeof(int));
+    return 0;
+}
+
+int BopomofoPhoInxAlt(BopomofoData *pBopomofo, int pho_inx[4])
+{
+    memcpy(pho_inx, pBopomofo->pho_inx_alt, 4*sizeof(int));
+    return 0;
+}
+
+int BopomofoKeyseq(BopomofoData *pBopomofo, char key_seq[10])
+{
+    memcpy(key_seq, pBopomofo->pinYinData.keySeq, 10*sizeof(char));
+    return 0;
+}
+
+uint16_t BopomofoSyllableIndex(BopomofoData *pBopomofo)
+{
+    return pBopomofo->phone;
+}
+
+uint16_t BopomofoSyllableIndexAlt(BopomofoData *pBopomofo)
+{
+    return pBopomofo->phoneAlt;
+}
+#endif

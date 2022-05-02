@@ -44,7 +44,7 @@ pub struct Layout {
     map: [KeyCode; 48],
 }
 
-pub trait Keymap {
+pub trait Keymap: Debug {
     fn map_key(&self, input: KeyCode) -> KeyEvent;
 }
 
@@ -111,6 +111,8 @@ impl KeyIndexFromQwerty for u8 {
         position.map(|pos| QWERTY.map[pos])
     }
 }
+
+use std::fmt::Debug;
 
 use KeyCode::*;
 use KeyIndex::*;

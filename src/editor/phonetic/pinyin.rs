@@ -11,6 +11,7 @@ use super::{KeyBehavior, KeyBuf, PhoneticKeyEditor};
 
 const MAX_PINYIN_LEN: usize = 10;
 
+#[derive(Debug)]
 pub enum PinyinVariant {
     HanyuPinyin,
     ThlPinyin,
@@ -23,7 +24,7 @@ impl Default for PinyinVariant {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Pinyin {
     key_seq: String,
     key_buf: KeyBuf,
@@ -35,13 +36,30 @@ impl Pinyin {
     pub fn new() -> Pinyin {
         Default::default()
     }
+    pub fn hanyu() -> Pinyin {
+        Pinyin {
+            variant: PinyinVariant::HanyuPinyin,
+            ..Default::default()
+        }
+    }
+    pub fn thl() -> Pinyin {
+        Pinyin {
+            variant: PinyinVariant::ThlPinyin,
+            ..Default::default()
+        }
+    }
+    pub fn mps2() -> Pinyin {
+        Pinyin {
+            variant: PinyinVariant::Mps2Pinyin,
+            ..Default::default()
+        }
+    }
     pub fn from_raw_parts(
         kb_type: PinyinVariant,
         raw_seq: &CStr,
         pho_inx: &[i32],
         pho_inx_alt: &[i32],
     ) -> Pinyin {
-        dbg!(&raw_seq);
         Pinyin {
             key_seq: raw_seq.to_owned().into_string().unwrap(),
             key_buf: KeyBuf::from_raw_parts(pho_inx),
@@ -106,6 +124,15 @@ impl PhoneticKeyEditor for Pinyin {
             return KeyBehavior::Absorb;
         }
 
+        let tone = match key.code {
+            // KeyCode::Space | KeyCode::N1 => Some(Bopomofo::TONE1),
+            KeyCode::N2 => Some(Bopomofo::TONE2),
+            KeyCode::N3 => Some(Bopomofo::TONE3),
+            KeyCode::N4 => Some(Bopomofo::TONE4),
+            KeyCode::N5 => Some(Bopomofo::TONE5),
+            _ => None,
+        };
+
         if let Some(entry) = match self.variant {
             PinyinVariant::HanyuPinyin => HANYU_PINYIN_MAPPING.iter(),
             PinyinVariant::ThlPinyin => THL_PINYIN_MAPPING.iter(),
@@ -115,8 +142,10 @@ impl PhoneticKeyEditor for Pinyin {
         {
             self.key_seq.clear();
             self.key_buf = entry.primary;
+            self.key_buf.3 = tone;
             self.key_buf_alt = entry.alt;
-            return KeyBehavior::TryCommit;
+            self.key_buf_alt.3 = tone;
+            return KeyBehavior::Commit;
         }
 
         if let Some(entry) = COMMON_MAPPING
@@ -125,8 +154,10 @@ impl PhoneticKeyEditor for Pinyin {
         {
             self.key_seq.clear();
             self.key_buf = entry.primary;
+            self.key_buf.3 = tone;
             self.key_buf_alt = entry.alt;
-            return KeyBehavior::TryCommit;
+            self.key_buf_alt.3 = tone;
+            return KeyBehavior::Commit;
         }
 
         let initial = INITIAL_MAPPING
@@ -207,9 +238,13 @@ impl PhoneticKeyEditor for Pinyin {
         }
 
         self.key_seq.clear();
-        self.key_buf = KeyBuf(ini, med, fin, None);
-        self.key_buf_alt = KeyBuf(ini, med, fin, None);
-        KeyBehavior::TryCommit
+        self.key_buf = KeyBuf(ini, med, fin, tone);
+        self.key_buf_alt = KeyBuf(ini, med, fin, tone);
+        KeyBehavior::Commit
+    }
+
+    fn is_entering(&self) -> bool {
+        !self.key_seq.is_empty()
     }
 
     fn pop(&mut self) -> Option<Bopomofo> {
@@ -224,6 +259,10 @@ impl PhoneticKeyEditor for Pinyin {
 
     fn observe(&self) -> KeyBuf {
         self.key_buf
+    }
+
+    fn key_seq(&self) -> Option<String> {
+        Some(self.key_seq.clone())
     }
 }
 

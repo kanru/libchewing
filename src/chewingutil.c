@@ -140,7 +140,9 @@ int HaninSymbolInput(ChewingData *pgdata)
 
 static int _Inner_InternalSpecialSymbol(int key, ChewingData *pgdata, char symkey, const char *const chibuf)
 {
+#ifndef HAVE_RUST
     int kbtype;
+#endif
     PreeditBuf *buf;
 
     if (key == symkey && NULL != chibuf) {
@@ -163,11 +165,15 @@ static int _Inner_InternalSpecialSymbol(int key, ChewingData *pgdata, char symke
         pgdata->bUserArrCnnct[PhoneSeqCursor(pgdata)] = 0;
         pgdata->chiSymbolCursor++;
         pgdata->chiSymbolBufLen++;
+#ifdef HAVE_RUST
+        BopomofoRemoveAll(&pgdata->bopomofoData);
+#else
         /* reset Bopomofo data */
         /* Don't forget the kbtype */
         kbtype = pgdata->bopomofoData.kbtype;
         memset(&(pgdata->bopomofoData), 0, sizeof(BopomofoData));
         pgdata->bopomofoData.kbtype = kbtype;
+#endif
         return 1;
     }
     return 0;
@@ -306,7 +312,6 @@ int EasySymbolInput(int key, ChewingData *pgdata)
 
 int SymbolChoice(ChewingData *pgdata, int sel_i)
 {
-    int kbtype;
     int i;
     int symbol_type;
     int key;
@@ -365,10 +370,15 @@ int SymbolChoice(ChewingData *pgdata, int sel_i)
 
         pgdata->bUserArrCnnct[PhoneSeqCursor(pgdata)] = 0;
         ChoiceEndChoice(pgdata);
-        /* Don't forget the kbtype */
-        kbtype = pgdata->bopomofoData.kbtype;
-        memset(&(pgdata->bopomofoData), 0, sizeof(BopomofoData));
-        pgdata->bopomofoData.kbtype = kbtype;
+
+#ifdef HAVE_RUST
+        BopomofoRemoveAll(&pgdata->bopomofoData);
+#else        
+        memset(&pgdata->bopomofoData.pho_inx, 0, sizeof(pgdata->bopomofoData.pho_inx));
+        memset(&pgdata->bopomofoData.pho_inx_alt, 0, sizeof(pgdata->bopomofoData.pho_inx_alt));
+        pgdata->bopomofoData.phone = 0;
+        pgdata->bopomofoData.phoneAlt = 0;
+#endif
 
         if (symbol_type == SYMBOL_CHOICE_INSERT) {
             pgdata->chiSymbolBufLen++;
@@ -858,11 +868,15 @@ int MakeOutput(ChewingOutput *pgo, ChewingData *pgdata)
     pgo->chiSymbolCursor = pgdata->chiSymbolCursor;
 
     /* fill bopomofoBuf */
-    if (pgdata->bopomofoData.kbtype >= KB_HANYU_PINYIN) {
-        strcpy(pgo->bopomofoBuf, pgdata->bopomofoData.pinYinData.keySeq);
+    if (BopomofoKbType(&pgdata->bopomofoData) >= KB_HANYU_PINYIN) {
+        char key_seq[10];
+        BopomofoKeyseq(&pgdata->bopomofoData, key_seq);
+        strcpy(pgo->bopomofoBuf, key_seq);
     } else {
+        int pho_inx[4];
+        BopomofoPhoInx(&pgdata->bopomofoData, pho_inx);
         for (i = 0; i < BOPOMOFO_SIZE; i++) {
-            inx = pgdata->bopomofoData.pho_inx[i];
+            inx = pho_inx[i];
             if (inx != 0) {
                 ueStrNCpy(pgo->bopomofoBuf + strlen(pgo->bopomofoBuf),
                           ueConstStrSeek(zhuin_tab[i], inx - 1),

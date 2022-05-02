@@ -7,6 +7,7 @@ use crate::{
 
 use super::{KeyBehavior, KeyBuf, PhoneticKeyEditor};
 
+#[derive(Debug)]
 pub struct Et26 {
     key_buf: KeyBuf,
 }
@@ -73,7 +74,16 @@ impl PhoneticKeyEditor for Et26 {
                     _ => (),
                 }
             }
-            KeyBehavior::TryCommit
+            let tone = match key.code {
+                // KeyCode::Space => Some(Bopomofo::TONE1),
+                KeyCode::F => Some(Bopomofo::TONE2),
+                KeyCode::J => Some(Bopomofo::TONE3),
+                KeyCode::K => Some(Bopomofo::TONE4),
+                KeyCode::D => Some(Bopomofo::TONE5),
+                _ => None,
+            };
+            self.key_buf.3 = tone;
+            KeyBehavior::Commit
         } else {
             let bopomofo = match key.code {
                 KeyCode::A => Bopomofo::A,
@@ -192,6 +202,10 @@ impl PhoneticKeyEditor for Et26 {
 
             KeyBehavior::Absorb
         }
+    }
+
+    fn is_entering(&self) -> bool {
+        !self.key_buf.is_empty()
     }
 
     fn pop(&mut self) -> Option<Bopomofo> {

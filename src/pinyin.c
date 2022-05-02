@@ -20,6 +20,15 @@
 #include "bopomofo-private.h"
 #include "private.h"
 
+#ifdef HAVE_RUST
+
+void TerminatePinyin(ChewingData *pgdata) {}
+int InitPinyin(ChewingData *pgdata, const char *prefix) {
+    return 1;
+}
+
+#else
+
 void TerminatePinyin(ChewingData *pgdata)
 {
     free(pgdata->static_data.hanyuInitialsMap);
@@ -308,3 +317,5 @@ int PinyinToBopomofo(ChewingData *pgdata, const char *pinyinKeySeq, char *bopomo
     strcpy(bopomofoKeySeqAlt, bopomofoKeySeq);
     return 0;
 }
+
+#endif

@@ -221,7 +221,7 @@ static void SetChoiceInfo(ChewingData *pgdata)
             ChoiceInfoAppendChi(pgdata, pci, phoneSeqAlt[cursor]);
         }
 
-        if (pgdata->bopomofoData.kbtype == KB_HSU || pgdata->bopomofoData.kbtype == KB_DVORAK_HSU) {
+        if (BopomofoKbType(&pgdata->bopomofoData) == KB_HSU || BopomofoKbType(&pgdata->bopomofoData) == KB_DVORAK_HSU) {
             switch (phoneSeq[cursor]) {
             case 0x2800:       /* 'ㄘ' */
                 ChoiceInfoAppendChi(pgdata, pci, 0x30);     /* 'ㄟ' */
@@ -272,7 +272,7 @@ static void SetChoiceInfo(ChewingData *pgdata)
             }
         }
 
-        if (pgdata->bopomofoData.kbtype == KB_ET26) {
+        if (BopomofoKbType(&pgdata->bopomofoData) == KB_ET26) {
             switch (phoneSeq[cursor]) {
             case 0x40:      /* 'ㄡ' */
                 ChoiceInfoAppendChi(pgdata, pci, 0x400);    /* 'ㄆ' */

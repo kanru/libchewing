@@ -7,6 +7,7 @@ use crate::{
 
 use super::{KeyBehavior, KeyBuf, KeyEvent, PhoneticKeyEditor};
 
+#[derive(Debug)]
 pub struct Hsu {
     key_buf: KeyBuf,
 }
@@ -88,9 +89,16 @@ impl PhoneticKeyEditor for Hsu {
                 _ => (),
             }
 
-            // let search_times = if key == K33 { 3 } else { 2 };
-            // self.end_key_process(key, search_times)
-            KeyBehavior::TryCommit
+            let tone = match key.code {
+                // KeyCode::Space => Some(Bopomofo::TONE1),
+                KeyCode::D => Some(Bopomofo::TONE2),
+                KeyCode::F => Some(Bopomofo::TONE3),
+                KeyCode::J => Some(Bopomofo::TONE4),
+                KeyCode::S => Some(Bopomofo::TONE5),
+                _ => None,
+            };
+            self.key_buf.3 = tone;
+            KeyBehavior::Commit
         } else {
             let bopomofo = match key.code {
                 KeyCode::A => {
@@ -217,6 +225,10 @@ impl PhoneticKeyEditor for Hsu {
         }
     }
 
+    fn is_entering(&self) -> bool {
+        !self.key_buf.is_empty()
+    }
+
     fn pop(&mut self) -> Option<Bopomofo> {
         if self.key_buf.3.is_some() {
             return self.key_buf.3.take();
@@ -258,7 +270,7 @@ mod test {
         hsu.key_press(keymap.map_key(KeyCode::E));
         hsu.key_press(keymap.map_key(KeyCode::N));
         hsu.key_press(keymap.map_key(KeyCode::Space));
-        let result = hsu.read();
+        let result = hsu.observe();
         assert_eq!(result.0, Some(Bopomofo::X));
         assert_eq!(result.1, Some(Bopomofo::I));
         assert_eq!(result.2, Some(Bopomofo::EN));
@@ -270,7 +282,7 @@ mod test {
         let keymap = IdentityKeymap::new(QWERTY);
         hsu.key_press(keymap.map_key(KeyCode::N));
         hsu.key_press(keymap.map_key(KeyCode::F));
-        let result = hsu.read();
+        let result = hsu.observe();
         assert_eq!(result.2, Some(Bopomofo::EN));
     }
 }

@@ -62,14 +62,14 @@ pub enum Bopomofo {
     Z,
     /// ㄘ
     C,
+    /// ㄙ
+    S,
     /// 一
     I,
     /// ㄨ
     U,
     /// ㄩ
     IU,
-    /// ㄙ
-    S,
     /// ㄚ
     A,
     /// ㄛ
@@ -96,16 +96,16 @@ pub enum Bopomofo {
     ENG,
     /// ㄦ
     ER,
-    /// ˉ
-    TONE1,
+    /// ˙
+    TONE5,
     /// ˊ
     TONE2,
     /// ˇ
     TONE3,
     /// ˋ
     TONE4,
-    /// ˙
-    TONE5,
+    /// ˉ
+    TONE1,
 }
 
 use Bopomofo::*;
@@ -203,10 +203,10 @@ impl TryFrom<char> for Bopomofo {
             'ㄨ' => Ok(Bopomofo::U),
             'ㄩ' => Ok(Bopomofo::IU),
             'ˉ' => Ok(Bopomofo::TONE1),
+            '˙' => Ok(Bopomofo::TONE5),
             'ˊ' => Ok(Bopomofo::TONE2),
             'ˇ' => Ok(Bopomofo::TONE3),
             'ˋ' => Ok(Bopomofo::TONE4),
-            '˙' => Ok(Bopomofo::TONE5),
             _ => Err(BopomofoParseError::Unknown),
         }
     }

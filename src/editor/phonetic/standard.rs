@@ -10,6 +10,7 @@ use crate::{
 
 use super::{KeyBehavior, KeyBuf, PhoneticKeyEditor};
 
+#[derive(Debug)]
 pub struct Standard {
     key_buf: KeyBuf,
 }
@@ -82,7 +83,10 @@ impl PhoneticKeyEditor for Standard {
                 || self.key_buf.2.is_some()
                 || self.key_buf.3.is_some()
             {
-                return KeyBehavior::TryCommit;
+                if bopomofo != Bopomofo::TONE1 {
+                    self.key_buf.3.replace(bopomofo);
+                }
+                return KeyBehavior::Commit;
             }
         } else {
             self.key_buf.3.take();
@@ -100,6 +104,10 @@ impl PhoneticKeyEditor for Standard {
             BopomofoKind::Tone => self.key_buf.3.replace(bopomofo),
         };
         KeyBehavior::Absorb
+    }
+
+    fn is_entering(&self) -> bool {
+        !self.key_buf.is_empty()
     }
 
     fn pop(&mut self) -> Option<Bopomofo> {

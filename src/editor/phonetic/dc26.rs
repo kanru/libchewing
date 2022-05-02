@@ -7,6 +7,7 @@ use crate::{
 
 use super::{KeyBehavior, KeyBuf, PhoneticKeyEditor};
 
+#[derive(Debug)]
 pub struct DaiChien26 {
     key_buf: KeyBuf,
 }
@@ -51,7 +52,16 @@ fn default_or_alt(source: Option<Bopomofo>, default: Bopomofo, alt: Bopomofo) ->
 impl PhoneticKeyEditor for DaiChien26 {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         if self.is_end_key(key.index) {
-            return KeyBehavior::TryCommit;
+            let tone = match key.index {
+                // KeyIndex::K48 => Some(Bopomofo::TONE1),
+                KeyIndex::K17 => Some(Bopomofo::TONE2),
+                KeyIndex::K18 => Some(Bopomofo::TONE3),
+                KeyIndex::K29 => Some(Bopomofo::TONE4),
+                KeyIndex::K20 => Some(Bopomofo::TONE5),
+                _ => None,
+            };
+            self.key_buf.3 = tone;
+            return KeyBehavior::Commit;
         }
         let bopomofo = match key.index {
             KeyIndex::K15 => default_or_alt(self.key_buf.0, Bopomofo::B, Bopomofo::P),
@@ -155,6 +165,10 @@ impl PhoneticKeyEditor for DaiChien26 {
         };
 
         KeyBehavior::Absorb
+    }
+
+    fn is_entering(&self) -> bool {
+        !self.key_buf.is_empty()
     }
 
     fn pop(&mut self) -> Option<Bopomofo> {

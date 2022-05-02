@@ -309,14 +309,23 @@ CHEWING_API int chewing_Reset(ChewingContext *ctx)
     static_data = pgdata->static_data;
     logger = pgdata->logger;
     loggerData = pgdata->loggerData;
+#ifdef HAVE_RUST
+    if (pgdata->bopomofoData.editorWithKeymap != 0) {
+        FreePhoneticEditor(pgdata->bopomofoData.editorWithKeymap);
+    }
+#endif
     memset(pgdata, 0, sizeof(ChewingData));
     pgdata->config = old_config;
     pgdata->static_data = static_data;
     pgdata->logger = logger;
     pgdata->loggerData = loggerData;
 
+#ifdef HAVE_RUST
+    chewing_set_KBType(ctx, KB_DEFAULT);
+#else
     /* bopomofoData */
     memset(&(pgdata->bopomofoData), 0, sizeof(BopomofoData));
+#endif
 
     /* choiceInfo */
     memset(&(pgdata->choiceInfo), 0, sizeof(ChoiceInfo));
@@ -347,6 +356,13 @@ CHEWING_API int chewing_set_KBType(ChewingContext *ctx, int kbtype)
 
     LOG_API("kbtype = %d", kbtype);
 
+#ifdef HAVE_RUST
+    if (pgdata->bopomofoData.editorWithKeymap != 0) {
+        FreePhoneticEditor(pgdata->bopomofoData.editorWithKeymap);
+    }
+    pgdata->bopomofoData.editorWithKeymap = NewPhoneticEditor(kbtype);
+    return 0;
+#else
     if (kbtype < KB_TYPE_NUM && kbtype >= 0) {
         ctx->data->bopomofoData.kbtype = kbtype;
         return 0;
@@ -354,6 +370,7 @@ CHEWING_API int chewing_set_KBType(ChewingContext *ctx, int kbtype)
         ctx->data->bopomofoData.kbtype = KB_DEFAULT;
         return -1;
     }
+#endif
 }
 
 CHEWING_API int chewing_get_KBType(const ChewingContext *ctx)
@@ -365,9 +382,11 @@ CHEWING_API int chewing_get_KBType(const ChewingContext *ctx)
     }
     pgdata = ctx->data;
 
-    LOG_API("kbtype = %d", ctx->data->bopomofoData.kbtype);
+    int kbtype = BopomofoKbType(&ctx->data->bopomofoData);
 
-    return ctx->data->bopomofoData.kbtype;
+    LOG_API("kbtype = %d", kbtype);
+
+    return kbtype;
 }
 
 CHEWING_API char *chewing_get_KBString(const ChewingContext *ctx)
@@ -379,15 +398,20 @@ CHEWING_API char *chewing_get_KBString(const ChewingContext *ctx)
     }
     pgdata = ctx->data;
 
-    LOG_API("KBString = %s", kb_type_str[ctx->data->bopomofoData.kbtype]);
+    int kbtype = BopomofoKbType(&ctx->data->bopomofoData);
 
-    return strdup(kb_type_str[ctx->data->bopomofoData.kbtype]);
+    LOG_API("KBString = %s", kb_type_str[kbtype]);
+
+    return strdup(kb_type_str[kbtype]);
 }
 
 CHEWING_API void chewing_delete(ChewingContext *ctx)
 {
     if (ctx) {
         if (ctx->data) {
+#ifdef HAVE_RUST
+            FreePhoneticEditor(ctx->data->bopomofoData.editorWithKeymap);
+#endif
             TerminatePinyin(ctx->data);
             TerminateEasySymbolTable(ctx->data);
             TerminateSymbolTable(ctx->data);
@@ -1496,7 +1520,7 @@ CHEWING_API int chewing_handle_Default(ChewingContext *ctx, int key)
     DEBUG_OUT("   key=%d", key);
 
     /* Dvorak Hsu */
-    if (pgdata->bopomofoData.kbtype == KB_DVORAK_HSU) {
+    if (BopomofoKbType(&pgdata->bopomofoData) == KB_DVORAK_HSU) {
         key = dvorak_convert(key);
     }
 
@@ -1565,7 +1589,8 @@ CHEWING_API int chewing_handle_Default(ChewingContext *ctx, int key)
                 keystrokeRtn = KEYSTROKE_ABSORB;
                 break;
             case BOPOMOFO_COMMIT:
-                AddChi(pgdata->bopomofoData.phone, pgdata->bopomofoData.phoneAlt, pgdata);
+                AddChi(BopomofoSyllableIndex(&pgdata->bopomofoData), BopomofoSyllableIndexAlt(&pgdata->bopomofoData), pgdata);
+                BopomofoRemoveAll(&pgdata->bopomofoData);
                 break;
             case BOPOMOFO_NO_WORD:
                 keystrokeRtn = KEYSTROKE_BELL | KEYSTROKE_ABSORB;
@@ -2389,9 +2414,13 @@ CHEWING_API int chewing_clean_bopomofo_buf(ChewingContext *ctx)
 
     LOG_API("");
 
+#ifdef HAVE_RUST
+    BopomofoRemoveAll(&pgdata->bopomofoData);
+#else
     if (BopomofoIsEntering(&pgdata->bopomofoData)) {
         BopomofoRemoveAll(&pgdata->bopomofoData);
     }
+#endif
 
     MakeOutput(pgo, pgdata);
     return 0;

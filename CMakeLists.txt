@@ -370,16 +370,6 @@ set_target_properties(chewing PROPERTIES
     COMPILE_DEFINITIONS "CHEWING_DATADIR=\"${CMAKE_INSTALL_FULL_DATADIR}/libchewing\""
 )
 
-if (WITH_RUST)
-    add_rust_library(TARGET chewing_internal WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-    target_include_directories(chewing PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-    add_definitions(-DHAVE_RUST)
-    add_dependencies(chewing chewing_internal)
-    foreach(target ${ALL_TESTS})
-        target_link_libraries(${target} chewing_internal)
-    endforeach()
-endif()
-
 if (WITH_SQLITE3)
     add_library(userphrase STATIC
         ${INC_DIR}/internal/chewing-sql.h
@@ -467,6 +457,17 @@ add_library(common OBJECT
     ${SRC_DIR}/common/chewing-utf8-util.c
     ${SRC_DIR}/common/key2pho.c
 )
+
+if (WITH_RUST)
+    add_rust_library(TARGET chewing_internal WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    include_directories(${CMAKE_CURRENT_BINARY_DIR})
+    add_definitions(-DHAVE_RUST)
+    add_dependencies(chewing chewing_internal)
+    add_dependencies(common chewing_internal)
+    foreach(target ${ALL_TESTS})
+        target_link_libraries(${target} chewing_internal)
+    endforeach()
+endif()
 
 # install
 install(FILES ${ALL_DATA} DESTINATION ${CMAKE_INSTALL_DATADIR}/libchewing)

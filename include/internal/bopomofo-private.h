@@ -48,6 +48,12 @@ int BopomofoPhoInput(ChewingData *, int key);       /* assume `key' is "ascii" c
 int BopomofoRemoveLast(BopomofoData *);
 int BopomofoRemoveAll(BopomofoData *);
 int BopomofoIsEntering(BopomofoData *);
+int BopomofoKbType(BopomofoData *);
+int BopomofoPhoInx(BopomofoData *, int pho_inx[4]);
+int BopomofoPhoInxAlt(BopomofoData *, int pho_inx[4]);
+int BopomofoKeyseq(BopomofoData *, char key_seq[10]);
+uint16_t BopomofoSyllableIndex(BopomofoData *);
+uint16_t BopomofoSyllableIndexAlt(BopomofoData *);
 
 /* *INDENT-OFF* */
 #endif

@@ -38,6 +38,10 @@ typedef SSIZE_T ssize_t;
 #    include "chewing-sql.h"
 #endif
 
+#ifdef HAVE_RUST
+#include "chewing_internal.h"
+#endif
+
 #define MAX_UTF8_SIZE 4
 #define BOPOMOFO_SIZE 4
 #define PINYIN_SIZE 10
@@ -129,12 +133,16 @@ typedef struct PinYinData {
 } PinYinData;
 
 typedef struct BopomofoData {
+#if HAVE_RUST
+    void *editorWithKeymap;
+#else
     int kbtype;
     int pho_inx[BOPOMOFO_SIZE];
     int pho_inx_alt[BOPOMOFO_SIZE];
     uint16_t phone;
     uint16_t phoneAlt;
     PinYinData pinYinData;
+#endif
 } BopomofoData;
 
 /**

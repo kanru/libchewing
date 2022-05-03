@@ -1,75 +1,70 @@
 //! ET26 (倚天26鍵)
 
 use crate::{
-    bopomofo::{Bopomofo, BopomofoKind},
     keymap::{KeyCode, KeyEvent},
+    zhuyin::{Bopomofo, BopomofoKind, Syllable},
 };
 
-use super::{KeyBehavior, KeyBuf, PhoneticKeyEditor};
+use super::{KeyBehavior, PhoneticKeyEditor};
 
 #[derive(Debug)]
 pub struct Et26 {
-    key_buf: KeyBuf,
+    syllable: Syllable,
 }
 
 impl Et26 {
     pub fn new() -> Et26 {
         Et26 {
-            key_buf: Default::default(),
-        }
-    }
-    pub fn from_raw_parts(pho_inx: &[i32]) -> Et26 {
-        Et26 {
-            key_buf: KeyBuf::from_raw_parts(pho_inx),
+            syllable: Default::default(),
         }
     }
     fn is_end_key(&self, key: KeyCode) -> bool {
         match key {
             KeyCode::D | KeyCode::F | KeyCode::J | KeyCode::K | KeyCode::Space => {
-                self.key_buf.0.is_some() || self.key_buf.1.is_some() || self.key_buf.2.is_some()
+                !self.syllable.is_empty()
             }
             _ => false,
         }
     }
     fn has_initial_or_medial(&self) -> bool {
-        self.key_buf.0.is_some() || self.key_buf.1.is_some()
+        self.syllable.has_initial() || self.syllable.has_medial()
     }
 }
 
 impl PhoneticKeyEditor for Et26 {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         if self.is_end_key(key.code) {
-            if self.key_buf.1.is_none() && self.key_buf.2.is_none() {
-                match self.key_buf.0 {
+            if !self.syllable.has_medial() && !self.syllable.has_rime() {
+                match self.syllable.initial {
                     Some(Bopomofo::J) => {
-                        self.key_buf.0.replace(Bopomofo::ZH);
+                        self.syllable.update(Bopomofo::ZH);
                     }
                     Some(Bopomofo::X) => {
-                        self.key_buf.0.replace(Bopomofo::SH);
+                        self.syllable.update(Bopomofo::SH);
                     }
                     Some(Bopomofo::P) => {
-                        self.key_buf.0.take();
-                        self.key_buf.2.replace(Bopomofo::OU);
+                        self.syllable.initial.take();
+                        self.syllable.update(Bopomofo::OU);
                     }
                     Some(Bopomofo::M) => {
-                        self.key_buf.0.take();
-                        self.key_buf.2.replace(Bopomofo::AN);
+                        self.syllable.initial.take();
+                        self.syllable.update(Bopomofo::AN);
                     }
                     Some(Bopomofo::N) => {
-                        self.key_buf.0.take();
-                        self.key_buf.2.replace(Bopomofo::EN);
+                        self.syllable.initial.take();
+                        self.syllable.update(Bopomofo::EN);
                     }
                     Some(Bopomofo::T) => {
-                        self.key_buf.0.take();
-                        self.key_buf.2.replace(Bopomofo::ANG);
+                        self.syllable.initial.take();
+                        self.syllable.update(Bopomofo::ANG);
                     }
                     Some(Bopomofo::L) => {
-                        self.key_buf.0.take();
-                        self.key_buf.2.replace(Bopomofo::ENG);
+                        self.syllable.initial.take();
+                        self.syllable.update(Bopomofo::ENG);
                     }
                     Some(Bopomofo::H) => {
-                        self.key_buf.0.take();
-                        self.key_buf.2.replace(Bopomofo::ER);
+                        self.syllable.initial.take();
+                        self.syllable.update(Bopomofo::ER);
                     }
                     _ => (),
                 }
@@ -82,7 +77,7 @@ impl PhoneticKeyEditor for Et26 {
                 KeyCode::D => Some(Bopomofo::TONE5),
                 _ => None,
             };
-            self.key_buf.3 = tone;
+            self.syllable.tone = tone;
             KeyBehavior::Commit
         } else {
             let bopomofo = match key.code {
@@ -164,28 +159,28 @@ impl PhoneticKeyEditor for Et26 {
             };
 
             match bopomofo.kind() {
-                BopomofoKind::MedialGlide => {
+                BopomofoKind::Medial => {
                     if bopomofo == Bopomofo::U {
-                        match self.key_buf.0 {
+                        match self.syllable.initial {
                             Some(Bopomofo::J) => {
-                                self.key_buf.0.replace(Bopomofo::ZH);
+                                self.syllable.update(Bopomofo::ZH);
                             }
                             Some(Bopomofo::X) => {
-                                self.key_buf.0.replace(Bopomofo::SH);
+                                self.syllable.update(Bopomofo::SH);
                             }
                             _ => (),
                         }
-                    } else if let Some(Bopomofo::G) = self.key_buf.0 {
-                        self.key_buf.0.replace(Bopomofo::Q);
+                    } else if let Some(Bopomofo::G) = self.syllable.initial {
+                        self.syllable.update(Bopomofo::Q);
                     }
                 }
-                BopomofoKind::Final if self.key_buf.1.is_none() => {
-                    match self.key_buf.0 {
+                BopomofoKind::Rime if !self.syllable.has_medial() => {
+                    match self.syllable.initial {
                         Some(Bopomofo::J) => {
-                            self.key_buf.0.replace(Bopomofo::ZH);
+                            self.syllable.update(Bopomofo::ZH);
                         }
                         Some(Bopomofo::X) => {
-                            self.key_buf.0.replace(Bopomofo::SH);
+                            self.syllable.update(Bopomofo::SH);
                         }
                         _ => (),
                     };
@@ -193,39 +188,24 @@ impl PhoneticKeyEditor for Et26 {
                 _ => (),
             };
 
-            match bopomofo.kind() {
-                BopomofoKind::Initial => self.key_buf.0.replace(bopomofo),
-                BopomofoKind::MedialGlide => self.key_buf.1.replace(bopomofo),
-                BopomofoKind::Final => self.key_buf.2.replace(bopomofo),
-                BopomofoKind::Tone => self.key_buf.3.replace(bopomofo),
-            };
-
+            self.syllable.update(bopomofo);
             KeyBehavior::Absorb
         }
     }
 
     fn is_entering(&self) -> bool {
-        !self.key_buf.is_empty()
+        !self.syllable.is_empty()
     }
 
     fn pop(&mut self) -> Option<Bopomofo> {
-        if self.key_buf.3.is_some() {
-            return self.key_buf.3.take();
-        } else if self.key_buf.2.is_some() {
-            return self.key_buf.2.take();
-        } else if self.key_buf.1.is_some() {
-            return self.key_buf.1.take();
-        } else if self.key_buf.0.is_some() {
-            return self.key_buf.0.take();
-        }
-        None
+        self.syllable.pop()
     }
 
     fn clear(&mut self) {
-        self.key_buf = KeyBuf(None, None, None, None);
+        self.syllable.clear();
     }
 
-    fn observe(&self) -> KeyBuf {
-        self.key_buf
+    fn observe(&self) -> Syllable {
+        self.syllable
     }
 }

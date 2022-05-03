@@ -17,7 +17,10 @@
 
 use std::fmt::Debug;
 
-use crate::{bopomofo::Bopomofo, keymap::KeyEvent};
+use crate::{
+    keymap::KeyEvent,
+    zhuyin::{Bopomofo, Syllable},
+};
 
 pub mod dc26;
 pub mod et26;
@@ -55,51 +58,6 @@ pub enum KeyBehavior {
     OpenSymbolTable,
 }
 
-#[derive(Clone, Copy, Default, Debug)]
-pub struct KeyBuf(
-    pub Option<Bopomofo>,
-    pub Option<Bopomofo>,
-    pub Option<Bopomofo>,
-    pub Option<Bopomofo>,
-);
-
-impl KeyBuf {
-    pub fn is_empty(&self) -> bool {
-        self.0.is_none() && self.1.is_none() && self.2.is_none() && self.3.is_none()
-    }
-    pub fn encode(&self) -> u16 {
-        let initial = self.0.map_or(0, |v| v as u16 + 1);
-        let medial = self.1.map_or(0, |v| (v as u16) - 20);
-        let r#final = self.2.map_or(0, |v| (v as u16) - 23);
-        let tone = self.3.map_or(0, |v| (v as u16) - 36).clamp(0, 4);
-        (initial << 9) | (medial << 7) | (r#final << 3) | tone
-    }
-    pub fn from_raw_parts(pho_inx: &[i32]) -> KeyBuf {
-        KeyBuf(
-            if pho_inx[0] == 0 {
-                None
-            } else {
-                Some(Bopomofo::from_initial(pho_inx[0]))
-            },
-            if pho_inx[1] == 0 {
-                None
-            } else {
-                Some(Bopomofo::from_medial(pho_inx[1]))
-            },
-            if pho_inx[2] == 0 {
-                None
-            } else {
-                Some(Bopomofo::from_final(pho_inx[2]))
-            },
-            if pho_inx[3] == 0 {
-                None
-            } else {
-                Some(Bopomofo::from_tone(pho_inx[3]))
-            },
-        )
-    }
-}
-
 pub trait PhoneticKeyEditor: Debug {
     /// Handles a key press event and returns the behavior of the layout.
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior;
@@ -111,31 +69,9 @@ pub trait PhoneticKeyEditor: Debug {
     /// Clears the phonetic key buffer, removing all values.
     fn clear(&mut self);
     /// Returns the current phonetic key buffer without changing it.
-    fn observe(&self) -> KeyBuf;
+    fn observe(&self) -> Syllable;
     /// Returns the current key seq buffer
     fn key_seq(&self) -> Option<String> {
         None
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::bopomofo::Bopomofo;
-
-    use super::KeyBuf;
-
-    #[test]
-    fn encode_hsu_sdf() {
-        let key_buf = KeyBuf(Some(Bopomofo::S), None, None, None);
-        let syllable_code = key_buf.encode();
-        assert_eq!(0x2A00, syllable_code);
-
-        let key_buf = KeyBuf(Some(Bopomofo::D), None, None, None);
-        let syllable_code = key_buf.encode();
-        assert_eq!(0xA00, syllable_code);
-
-        let key_buf = KeyBuf(Some(Bopomofo::F), None, None, None);
-        let syllable_code = key_buf.encode();
-        assert_eq!(0x800, syllable_code);
     }
 }

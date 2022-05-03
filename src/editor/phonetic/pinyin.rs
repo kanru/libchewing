@@ -1,13 +1,11 @@
 //! Pinyin
 
-use std::ffi::CStr;
-
 use crate::{
-    bopomofo::Bopomofo,
     keymap::{KeyCode, KeyEvent},
+    zhuyin::{Bopomofo, Syllable},
 };
 
-use super::{KeyBehavior, KeyBuf, PhoneticKeyEditor};
+use super::{KeyBehavior, PhoneticKeyEditor};
 
 const MAX_PINYIN_LEN: usize = 10;
 
@@ -27,8 +25,8 @@ impl Default for PinyinVariant {
 #[derive(Default, Debug)]
 pub struct Pinyin {
     key_seq: String,
-    key_buf: KeyBuf,
-    key_buf_alt: KeyBuf,
+    syllable: Syllable,
+    syllable_alt: Syllable,
     variant: PinyinVariant,
 }
 
@@ -54,21 +52,8 @@ impl Pinyin {
             ..Default::default()
         }
     }
-    pub fn from_raw_parts(
-        kb_type: PinyinVariant,
-        raw_seq: &CStr,
-        pho_inx: &[i32],
-        pho_inx_alt: &[i32],
-    ) -> Pinyin {
-        Pinyin {
-            key_seq: raw_seq.to_owned().into_string().unwrap(),
-            key_buf: KeyBuf::from_raw_parts(pho_inx),
-            key_buf_alt: KeyBuf::from_raw_parts(pho_inx_alt),
-            variant: kb_type,
-        }
-    }
-    pub fn alt(&self) -> KeyBuf {
-        self.key_buf_alt
+    pub fn alt(&self) -> Syllable {
+        self.syllable_alt
     }
     pub fn key_seq(&self) -> &String {
         &self.key_seq
@@ -134,33 +119,33 @@ impl PhoneticKeyEditor for Pinyin {
         };
 
         if let Some(entry) = match self.variant {
-            PinyinVariant::HanyuPinyin => HANYU_PINYIN_MAPPING.iter(),
-            PinyinVariant::ThlPinyin => THL_PINYIN_MAPPING.iter(),
-            PinyinVariant::Mps2Pinyin => MPS2_PINYIN_MAPPING.iter(),
+            PinyinVariant::HanyuPinyin => table::HANYU_PINYIN_MAPPING.iter(),
+            PinyinVariant::ThlPinyin => table::THL_PINYIN_MAPPING.iter(),
+            PinyinVariant::Mps2Pinyin => table::MPS2_PINYIN_MAPPING.iter(),
         }
         .find(|entry| entry.pinyin == self.key_seq)
         {
             self.key_seq.clear();
-            self.key_buf = entry.primary;
-            self.key_buf.3 = tone;
-            self.key_buf_alt = entry.alt;
-            self.key_buf_alt.3 = tone;
+            self.syllable = entry.primary;
+            self.syllable.tone = tone;
+            self.syllable_alt = entry.alt;
+            self.syllable_alt.tone = tone;
             return KeyBehavior::Commit;
         }
 
-        if let Some(entry) = COMMON_MAPPING
+        if let Some(entry) = table::COMMON_MAPPING
             .iter()
             .find(|entry| entry.pinyin == self.key_seq)
         {
             self.key_seq.clear();
-            self.key_buf = entry.primary;
-            self.key_buf.3 = tone;
-            self.key_buf_alt = entry.alt;
-            self.key_buf_alt.3 = tone;
+            self.syllable = entry.primary;
+            self.syllable.tone = tone;
+            self.syllable_alt = entry.alt;
+            self.syllable_alt.tone = tone;
             return KeyBehavior::Commit;
         }
 
-        let initial = INITIAL_MAPPING
+        let initial = table::INITIAL_MAPPING
             .iter()
             .find(|entry| self.key_seq.starts_with(&entry.pinyin));
 
@@ -169,35 +154,37 @@ impl PhoneticKeyEditor for Pinyin {
             None => &self.key_seq,
         };
 
-        let fina = FINAL_MAPPING.iter().find(|entry| final_seq == entry.pinyin);
+        let fina = table::FINAL_MAPPING
+            .iter()
+            .find(|entry| final_seq == entry.pinyin);
 
         if initial.is_none() && fina.is_none() {
             self.key_seq.clear();
             return KeyBehavior::Absorb;
         }
 
-        let mut ini = initial.map(|i| i.initial);
-        let mut med = fina.and_then(|f| f.medial);
-        let mut fin = fina.and_then(|f| f.fina);
+        let mut initial = initial.map(|i| i.initial);
+        let mut medial = fina.and_then(|f| f.medial);
+        let mut rime = fina.and_then(|f| f.rime);
 
-        if let Some(Bopomofo::I) = fin {
-            match ini {
+        if let Some(Bopomofo::I) = rime {
+            match initial {
                 Some(Bopomofo::ZH) | Some(Bopomofo::CH) | Some(Bopomofo::SH)
                 | Some(Bopomofo::R) | Some(Bopomofo::Z) | Some(Bopomofo::C) | Some(Bopomofo::S) => {
-                    med.take();
-                    fin.take();
+                    medial.take();
+                    rime.take();
                 }
                 _ => (),
             }
         }
 
-        match ini {
+        match initial {
             Some(Bopomofo::J) | Some(Bopomofo::Q) | Some(Bopomofo::X) => {
-                match (med, fin) {
+                match (medial, rime) {
                     (Some(Bopomofo::U), Some(Bopomofo::AN))
                     | (Some(Bopomofo::U), Some(Bopomofo::EN))
                     | (Some(Bopomofo::U), None) => {
-                        med.replace(Bopomofo::IU);
+                        medial.replace(Bopomofo::IU);
                     }
                     _ => (),
                 };
@@ -205,31 +192,31 @@ impl PhoneticKeyEditor for Pinyin {
             _ => (),
         }
 
-        match med {
+        match medial {
             Some(Bopomofo::I) | Some(Bopomofo::IU) => {
-                match ini {
+                match initial {
                     Some(Bopomofo::S) | Some(Bopomofo::SH) => {
-                        ini.replace(Bopomofo::X);
+                        initial.replace(Bopomofo::X);
                     }
                     Some(Bopomofo::C) | Some(Bopomofo::CH) => {
-                        ini.replace(Bopomofo::Q);
+                        initial.replace(Bopomofo::Q);
                     }
                     _ => (),
                 };
             }
             _ => {
-                if ini == Some(Bopomofo::J) {
-                    ini.replace(Bopomofo::ZH);
+                if initial == Some(Bopomofo::J) {
+                    initial.replace(Bopomofo::ZH);
                 }
             }
         }
 
-        match ini {
+        match initial {
             Some(Bopomofo::B) | Some(Bopomofo::P) | Some(Bopomofo::M) | Some(Bopomofo::F) => {
-                match (med, fin) {
+                match (medial, rime) {
                     (Some(Bopomofo::U), Some(Bopomofo::ENG))
                     | (Some(Bopomofo::U), Some(Bopomofo::O)) => {
-                        med.take();
+                        medial.take();
                     }
                     _ => (),
                 };
@@ -238,8 +225,13 @@ impl PhoneticKeyEditor for Pinyin {
         }
 
         self.key_seq.clear();
-        self.key_buf = KeyBuf(ini, med, fin, tone);
-        self.key_buf_alt = KeyBuf(ini, med, fin, tone);
+        self.syllable = Syllable {
+            initial,
+            medial,
+            rime,
+            tone,
+        };
+        self.syllable_alt = self.syllable;
         KeyBehavior::Commit
     }
 
@@ -253,12 +245,12 @@ impl PhoneticKeyEditor for Pinyin {
 
     fn clear(&mut self) {
         self.key_seq.clear();
-        self.key_buf = Default::default();
-        self.key_buf_alt = Default::default();
+        self.syllable.clear();
+        self.syllable_alt.clear();
     }
 
-    fn observe(&self) -> KeyBuf {
-        self.key_buf
+    fn observe(&self) -> Syllable {
+        self.syllable
     }
 
     fn key_seq(&self) -> Option<String> {
@@ -268,16 +260,16 @@ impl PhoneticKeyEditor for Pinyin {
 
 struct AmbiguousMapEntry {
     pinyin: &'static str,
-    primary: KeyBuf,
-    alt: KeyBuf,
+    primary: Syllable,
+    alt: Syllable,
 }
 
 macro_rules! amb {
-    ($pinyin:expr, { $pi:expr, $pm:expr, $pf:expr }, { $ai:expr, $am:expr, $af:expr } ) => {
+    ($pinyin:expr, $primary:expr, $alt:expr ) => {
         AmbiguousMapEntry {
             pinyin: $pinyin,
-            primary: KeyBuf($pi, $pm, $pf, None),
-            alt: KeyBuf($ai, $am, $af, None),
+            primary: $primary,
+            alt: $alt,
         }
     };
 }
@@ -299,189 +291,199 @@ macro_rules! ini {
 struct FinalMapEntry {
     pinyin: &'static str,
     medial: Option<Bopomofo>,
-    fina: Option<Bopomofo>,
+    rime: Option<Bopomofo>,
 }
 
 macro_rules! fin {
-    ($pinyin:expr, $medial:expr, $fina:expr) => {
+    ($pinyin:expr, $medial:expr, $rime:expr) => {
         FinalMapEntry {
             pinyin: $pinyin,
             medial: $medial,
-            fina: $fina,
+            rime: $rime,
         }
     };
 }
 
-const COMMON_MAPPING: [AmbiguousMapEntry; 18] = [
-    // Special cases for WG
-    amb!("tzu", { Some(Bopomofo::Z), None, None }, { Some(Bopomofo::Z), Some(Bopomofo::U), None }),
-    amb!("ssu", { Some(Bopomofo::S), None, None }, { Some(Bopomofo::S), Some(Bopomofo::U), None }),
-    amb!("szu", { Some(Bopomofo::S), None, None }, { Some(Bopomofo::S), Some(Bopomofo::U), None }),
-    // Common multiple mapping
-    amb!("e", { Some(Bopomofo::E), None, None }, { Some(Bopomofo::EH), None, None }),
-    amb!("ch", { Some(Bopomofo::CH), None, None }, { Some(Bopomofo::Q), None, None }),
-    amb!("sh", { Some(Bopomofo::SH), None, None }, { Some(Bopomofo::X), None, None }),
-    amb!("c", { Some(Bopomofo::C), None, None }, { Some(Bopomofo::Q), None, None }),
-    amb!("s", { Some(Bopomofo::S), None, None }, { Some(Bopomofo::X), None, None }),
-    amb!("nu", { Some(Bopomofo::N), Some(Bopomofo::U), None }, { Some(Bopomofo::N), Some(Bopomofo::IU), None }),
-    amb!("lu", { Some(Bopomofo::L), Some(Bopomofo::U), None }, { Some(Bopomofo::L), Some(Bopomofo::IU), None }),
-    amb!("luan", { Some(Bopomofo::L), Some(Bopomofo::U), Some(Bopomofo::AN) }, { Some(Bopomofo::L), Some(Bopomofo::IU), Some(Bopomofo::AN) }),
-    amb!("niu", { Some(Bopomofo::N), Some(Bopomofo::I), Some(Bopomofo::OU) }, { Some(Bopomofo::N), Some(Bopomofo::IU), None }),
-    amb!("liu", { Some(Bopomofo::L), Some(Bopomofo::I), Some(Bopomofo::OU) }, { Some(Bopomofo::L), Some(Bopomofo::IU), None }),
-    amb!("jiu", { Some(Bopomofo::J), Some(Bopomofo::I), Some(Bopomofo::OU) }, { Some(Bopomofo::J), Some(Bopomofo::IU), None }),
-    amb!("chiu", { Some(Bopomofo::Q), Some(Bopomofo::I), Some(Bopomofo::OU) }, { Some(Bopomofo::Q), Some(Bopomofo::IU), None }),
-    amb!("shiu", { Some(Bopomofo::X), Some(Bopomofo::I), Some(Bopomofo::OU) }, { Some(Bopomofo::X), Some(Bopomofo::IU), None }),
-    amb!("ju", { Some(Bopomofo::J), Some(Bopomofo::IU), None }, { Some(Bopomofo::ZH), Some(Bopomofo::U), None }),
-    amb!("juan", { Some(Bopomofo::J), Some(Bopomofo::IU), Some(Bopomofo::AN) }, { Some(Bopomofo::ZH), Some(Bopomofo::U), Some(Bopomofo::AN) }),
-];
+mod table {
 
-const HANYU_PINYIN_MAPPING: [AmbiguousMapEntry; 4] = [
-    amb!("chi", { Some(Bopomofo::CH), None, None }, { Some(Bopomofo::Q), Some(Bopomofo::I), None }),
-    amb!("shi", { Some(Bopomofo::SH), None, None }, { Some(Bopomofo::X), Some(Bopomofo::I), None }),
-    amb!("ci", { Some(Bopomofo::C), None, None }, { Some(Bopomofo::Q), Some(Bopomofo::I), None }),
-    amb!("si", { Some(Bopomofo::S), None, None }, { Some(Bopomofo::X), Some(Bopomofo::I), None }),
-];
+    use crate::{
+        syl,
+        zhuyin::{Bopomofo::*, Syllable},
+    };
 
-const THL_PINYIN_MAPPING: [AmbiguousMapEntry; 4] = [
-    amb!("chi", { Some(Bopomofo::Q), Some(Bopomofo::I), None }, { Some(Bopomofo::CH), None, None }),
-    amb!("shi", { Some(Bopomofo::X), Some(Bopomofo::I), None }, { Some(Bopomofo::SH), None, None }),
-    amb!("ci", { Some(Bopomofo::Q), Some(Bopomofo::I), None }, { Some(Bopomofo::C), None, None }),
-    amb!("si", { Some(Bopomofo::X), Some(Bopomofo::I), None }, { Some(Bopomofo::S), None, None }),
-];
+    use super::{AmbiguousMapEntry, FinalMapEntry, InitialMapEntry};
 
-const MPS2_PINYIN_MAPPING: [AmbiguousMapEntry; 13] = [
-    amb!("chi", { Some(Bopomofo::Q), Some(Bopomofo::I), None }, { Some(Bopomofo::CH), None, None }),
-    amb!("shi", { Some(Bopomofo::X), Some(Bopomofo::I), None }, { Some(Bopomofo::SH), None, None }),
-    amb!("ci", { Some(Bopomofo::Q), Some(Bopomofo::I), None }, { Some(Bopomofo::C), None, None }),
-    amb!("si", { Some(Bopomofo::X), Some(Bopomofo::I), None }, { Some(Bopomofo::S), None, None }),
-    amb!("niu", { Some(Bopomofo::N), Some(Bopomofo::IU), None }, { Some(Bopomofo::N), Some(Bopomofo::I), Some(Bopomofo::OU) }),
-    amb!("liu", { Some(Bopomofo::L), Some(Bopomofo::IU), None }, { Some(Bopomofo::L), Some(Bopomofo::I), Some(Bopomofo::OU) }),
-    amb!("jiu", { Some(Bopomofo::J), Some(Bopomofo::IU), None }, { Some(Bopomofo::J), Some(Bopomofo::I), Some(Bopomofo::OU) }),
-    amb!("chiu", { Some(Bopomofo::Q), Some(Bopomofo::IU), None }, { Some(Bopomofo::Q), Some(Bopomofo::I), Some(Bopomofo::OU) }),
-    amb!("shiu", { Some(Bopomofo::X), Some(Bopomofo::IU), None }, { Some(Bopomofo::X), Some(Bopomofo::I), Some(Bopomofo::OU) }),
-    amb!("ju", { Some(Bopomofo::ZH), Some(Bopomofo::U), None }, { Some(Bopomofo::J), Some(Bopomofo::IU), None }),
-    amb!("juan", { Some(Bopomofo::ZH), Some(Bopomofo::U), Some(Bopomofo::AN) }, { Some(Bopomofo::J), Some(Bopomofo::IU), Some(Bopomofo::AN) }),
-    amb!("juen", { Some(Bopomofo::ZH), Some(Bopomofo::U), Some(Bopomofo::EN) }, { Some(Bopomofo::J), Some(Bopomofo::IU), Some(Bopomofo::EN) }),
-    amb!("tzu", { Some(Bopomofo::Z), Some(Bopomofo::U), None }, { Some(Bopomofo::Z), None, None }),
-];
+    pub(super) const COMMON_MAPPING: [AmbiguousMapEntry; 18] = [
+        // Special cases for WG
+        amb!("tzu", syl![Z], syl![Z, U]),
+        amb!("ssu", syl![S], syl![S, U]),
+        amb!("szu", syl![S], syl![S, U]),
+        // Common multiple mapping
+        amb!("e", syl![E], syl![EH]),
+        amb!("ch", syl![CH], syl![Q]),
+        amb!("sh", syl![SH], syl![X]),
+        amb!("c", syl![C], syl![Q]),
+        amb!("s", syl![S], syl![X]),
+        amb!("nu", syl![N, U], syl![N, IU]),
+        amb!("lu", syl![L, U], syl![L, IU]),
+        amb!("luan", syl![L, U, AN], syl![L, IU, AN]),
+        amb!("niu", syl![N, I, OU], syl![N, IU]),
+        amb!("liu", syl![L, I, OU], syl![L, IU]),
+        amb!("jiu", syl![J, I, OU], syl![J, IU]),
+        amb!("chiu", syl![Q, I, OU], syl![Q, IU]),
+        amb!("shiu", syl![X, I, OU], syl![X, IU]),
+        amb!("ju", syl![J, IU], syl![ZH, U]),
+        amb!("juan", syl![J, IU, AN], syl![ZH, U, AN]),
+    ];
 
-const INITIAL_MAPPING: [InitialMapEntry; 25] = [
-    ini!("tz", Bopomofo::Z),
-    ini!("b", Bopomofo::B),
-    ini!("p", Bopomofo::P),
-    ini!("m", Bopomofo::M),
-    ini!("f", Bopomofo::F),
-    ini!("d", Bopomofo::D),
-    ini!("ts", Bopomofo::C),
-    ini!("t", Bopomofo::T),
-    ini!("n", Bopomofo::N),
-    ini!("l", Bopomofo::L),
-    ini!("g", Bopomofo::G),
-    ini!("k", Bopomofo::K),
-    ini!("hs", Bopomofo::X),
-    ini!("h", Bopomofo::H),
-    ini!("jh", Bopomofo::ZH),
-    ini!("j", Bopomofo::J),
-    ini!("q", Bopomofo::Q),
-    ini!("x", Bopomofo::X),
-    ini!("zh", Bopomofo::ZH),
-    ini!("ch", Bopomofo::CH),
-    ini!("sh", Bopomofo::SH),
-    ini!("r", Bopomofo::R),
-    ini!("z", Bopomofo::Z),
-    ini!("c", Bopomofo::C),
-    ini!("s", Bopomofo::S),
-];
+    pub(super) const HANYU_PINYIN_MAPPING: [AmbiguousMapEntry; 4] = [
+        amb!("chi", syl![CH], syl![Q, I]),
+        amb!("shi", syl![SH], syl![X, I]),
+        amb!("ci", syl![C], syl![Q, I]),
+        amb!("si", syl![S], syl![X, I]),
+    ];
 
-const FINAL_MAPPING: [FinalMapEntry; 90] = [
-    fin!("uang", Some(Bopomofo::U), Some(Bopomofo::ANG)),
-    fin!("wang", Some(Bopomofo::U), Some(Bopomofo::ANG)),
-    fin!("weng", Some(Bopomofo::U), Some(Bopomofo::ENG)),
-    fin!("wong", Some(Bopomofo::U), Some(Bopomofo::ENG)),
-    fin!("ying", Some(Bopomofo::I), Some(Bopomofo::ENG)),
-    fin!("yung", Some(Bopomofo::IU), Some(Bopomofo::ENG)),
-    fin!("yong", Some(Bopomofo::IU), Some(Bopomofo::ENG)),
-    fin!("iung", Some(Bopomofo::IU), Some(Bopomofo::ENG)),
-    fin!("iong", Some(Bopomofo::IU), Some(Bopomofo::ENG)),
-    fin!("iang", Some(Bopomofo::I), Some(Bopomofo::ANG)),
-    fin!("yang", Some(Bopomofo::I), Some(Bopomofo::ANG)),
-    fin!("yuan", Some(Bopomofo::IU), Some(Bopomofo::AN)),
-    fin!("iuan", Some(Bopomofo::IU), Some(Bopomofo::AN)),
-    fin!("ing", Some(Bopomofo::I), Some(Bopomofo::ENG)),
-    fin!("iao", Some(Bopomofo::I), Some(Bopomofo::AU)),
-    fin!("iau", Some(Bopomofo::I), Some(Bopomofo::AU)),
-    fin!("yao", Some(Bopomofo::I), Some(Bopomofo::AU)),
-    fin!("yau", Some(Bopomofo::I), Some(Bopomofo::AU)),
-    fin!("yun", Some(Bopomofo::IU), Some(Bopomofo::EN)),
-    fin!("iun", Some(Bopomofo::IU), Some(Bopomofo::EN)),
-    fin!("vn", Some(Bopomofo::IU), Some(Bopomofo::EN)),
-    fin!("iou", Some(Bopomofo::I), Some(Bopomofo::OU)),
-    fin!("iu", Some(Bopomofo::I), Some(Bopomofo::OU)),
-    fin!("you", Some(Bopomofo::I), Some(Bopomofo::OU)),
-    fin!("io", Some(Bopomofo::I), Some(Bopomofo::O)),
-    fin!("yo", Some(Bopomofo::I), Some(Bopomofo::O)),
-    fin!("ian", Some(Bopomofo::I), Some(Bopomofo::AN)),
-    fin!("ien", Some(Bopomofo::I), Some(Bopomofo::AN)),
-    fin!("yan", Some(Bopomofo::I), Some(Bopomofo::AN)),
-    fin!("yen", Some(Bopomofo::I), Some(Bopomofo::AN)),
-    fin!("yin", Some(Bopomofo::I), Some(Bopomofo::EN)),
-    fin!("ang", None, Some(Bopomofo::ANG)),
-    fin!("eng", None, Some(Bopomofo::ENG)),
-    fin!("uei", Some(Bopomofo::U), Some(Bopomofo::EI)),
-    fin!("ui", Some(Bopomofo::U), Some(Bopomofo::EI)),
-    fin!("wei", Some(Bopomofo::U), Some(Bopomofo::EI)),
-    fin!("uen", Some(Bopomofo::U), Some(Bopomofo::EN)),
-    fin!("yueh", Some(Bopomofo::IU), Some(Bopomofo::EH)),
-    fin!("yue", Some(Bopomofo::IU), Some(Bopomofo::EH)),
-    fin!("iue", Some(Bopomofo::IU), Some(Bopomofo::EH)),
-    fin!("ueh", Some(Bopomofo::IU), Some(Bopomofo::EH)),
-    fin!("ue", Some(Bopomofo::IU), Some(Bopomofo::EH)),
-    fin!("ve", Some(Bopomofo::IU), Some(Bopomofo::EH)),
-    fin!("uai", Some(Bopomofo::U), Some(Bopomofo::AI)),
-    fin!("wai", Some(Bopomofo::U), Some(Bopomofo::AI)),
-    fin!("uan", Some(Bopomofo::U), Some(Bopomofo::AN)),
-    fin!("wan", Some(Bopomofo::U), Some(Bopomofo::AN)),
-    fin!("un", Some(Bopomofo::U), Some(Bopomofo::EN)),
-    fin!("wen", Some(Bopomofo::U), Some(Bopomofo::EN)),
-    fin!("wun", Some(Bopomofo::U), Some(Bopomofo::EN)),
-    fin!("ung", Some(Bopomofo::U), Some(Bopomofo::ENG)),
-    fin!("ong", Some(Bopomofo::U), Some(Bopomofo::ENG)),
-    fin!("van", Some(Bopomofo::IU), Some(Bopomofo::AN)),
-    fin!("er", None, Some(Bopomofo::ER)),
-    fin!("ai", None, Some(Bopomofo::AI)),
-    fin!("ei", None, Some(Bopomofo::EI)),
-    fin!("ao", None, Some(Bopomofo::AU)),
-    fin!("au", None, Some(Bopomofo::AU)),
-    fin!("ou", None, Some(Bopomofo::OU)),
-    fin!("an", None, Some(Bopomofo::AN)),
-    fin!("en", None, Some(Bopomofo::EN)),
-    fin!("yi", None, Some(Bopomofo::I)),
-    fin!("ia", Some(Bopomofo::I), Some(Bopomofo::A)),
-    fin!("ya", Some(Bopomofo::I), Some(Bopomofo::A)),
-    fin!("ieh", Some(Bopomofo::I), Some(Bopomofo::EH)),
-    fin!("ie", Some(Bopomofo::I), Some(Bopomofo::EH)),
-    fin!("yeh", Some(Bopomofo::I), Some(Bopomofo::EH)),
-    fin!("ye", Some(Bopomofo::I), Some(Bopomofo::EH)),
-    fin!("in", Some(Bopomofo::I), Some(Bopomofo::EN)),
-    fin!("wu", Some(Bopomofo::U), None),
-    fin!("ua", Some(Bopomofo::U), Some(Bopomofo::A)),
-    fin!("wa", Some(Bopomofo::U), Some(Bopomofo::A)),
-    fin!("uo", Some(Bopomofo::U), Some(Bopomofo::O)),
-    fin!("wo", Some(Bopomofo::U), Some(Bopomofo::O)),
-    fin!("yu", Some(Bopomofo::IU), None),
-    fin!("ve", Some(Bopomofo::IU), Some(Bopomofo::EH)),
-    fin!("vn", Some(Bopomofo::IU), Some(Bopomofo::EN)),
-    fin!("ih", None, None),
-    fin!("a", None, Some(Bopomofo::A)),
-    fin!("o", None, Some(Bopomofo::O)),
-    fin!("eh", None, Some(Bopomofo::EH)),
-    fin!("e", None, Some(Bopomofo::E)),
-    fin!("v", Some(Bopomofo::IU), None),
-    fin!("i", Some(Bopomofo::I), None),
-    fin!("u", Some(Bopomofo::U), None),
-    fin!("E", None, Some(Bopomofo::EH)),
-    fin!("n", None, Some(Bopomofo::EN)),
-    fin!("ng", None, Some(Bopomofo::ENG)),
-    fin!("r", None, None),
-    fin!("z", None, None),
-];
+    pub(super) const THL_PINYIN_MAPPING: [AmbiguousMapEntry; 4] = [
+        amb!("chi", syl![Q, I], syl![CH]),
+        amb!("shi", syl![X, I], syl![SH]),
+        amb!("ci", syl![Q, I], syl![C]),
+        amb!("si", syl![X, I], syl![S]),
+    ];
+
+    pub(super) const MPS2_PINYIN_MAPPING: [AmbiguousMapEntry; 13] = [
+        amb!("chi", syl![Q, I], syl![CH]),
+        amb!("shi", syl![X, I], syl![SH]),
+        amb!("ci", syl![Q, I], syl![C]),
+        amb!("si", syl![X, I], syl![S]),
+        amb!("niu", syl![N, IU], syl![N, I, OU]),
+        amb!("liu", syl![L, IU], syl![L, I, OU]),
+        amb!("jiu", syl![J, IU], syl![J, I, OU]),
+        amb!("chiu", syl![Q, IU], syl![Q, I, OU]),
+        amb!("shiu", syl![X, IU], syl![X, I, OU]),
+        amb!("ju", syl![ZH, U], syl![J, IU]),
+        amb!("juan", syl![ZH, U, AN], syl![J, IU, AN]),
+        amb!("juen", syl![ZH, U, EN], syl![J, IU, EN]),
+        amb!("tzu", syl![Z, U], syl![Z]),
+    ];
+
+    pub(super) const INITIAL_MAPPING: [InitialMapEntry; 25] = [
+        ini!("tz", Z),
+        ini!("b", B),
+        ini!("p", P),
+        ini!("m", M),
+        ini!("f", F),
+        ini!("d", D),
+        ini!("ts", C),
+        ini!("t", T),
+        ini!("n", N),
+        ini!("l", L),
+        ini!("g", G),
+        ini!("k", K),
+        ini!("hs", X),
+        ini!("h", H),
+        ini!("jh", ZH),
+        ini!("j", J),
+        ini!("q", Q),
+        ini!("x", X),
+        ini!("zh", ZH),
+        ini!("ch", CH),
+        ini!("sh", SH),
+        ini!("r", R),
+        ini!("z", Z),
+        ini!("c", C),
+        ini!("s", S),
+    ];
+
+    pub(super) const FINAL_MAPPING: [FinalMapEntry; 90] = [
+        fin!("uang", Some(U), Some(ANG)),
+        fin!("wang", Some(U), Some(ANG)),
+        fin!("weng", Some(U), Some(ENG)),
+        fin!("wong", Some(U), Some(ENG)),
+        fin!("ying", Some(I), Some(ENG)),
+        fin!("yung", Some(IU), Some(ENG)),
+        fin!("yong", Some(IU), Some(ENG)),
+        fin!("iung", Some(IU), Some(ENG)),
+        fin!("iong", Some(IU), Some(ENG)),
+        fin!("iang", Some(I), Some(ANG)),
+        fin!("yang", Some(I), Some(ANG)),
+        fin!("yuan", Some(IU), Some(AN)),
+        fin!("iuan", Some(IU), Some(AN)),
+        fin!("ing", Some(I), Some(ENG)),
+        fin!("iao", Some(I), Some(AU)),
+        fin!("iau", Some(I), Some(AU)),
+        fin!("yao", Some(I), Some(AU)),
+        fin!("yau", Some(I), Some(AU)),
+        fin!("yun", Some(IU), Some(EN)),
+        fin!("iun", Some(IU), Some(EN)),
+        fin!("vn", Some(IU), Some(EN)),
+        fin!("iou", Some(I), Some(OU)),
+        fin!("iu", Some(I), Some(OU)),
+        fin!("you", Some(I), Some(OU)),
+        fin!("io", Some(I), Some(O)),
+        fin!("yo", Some(I), Some(O)),
+        fin!("ian", Some(I), Some(AN)),
+        fin!("ien", Some(I), Some(AN)),
+        fin!("yan", Some(I), Some(AN)),
+        fin!("yen", Some(I), Some(AN)),
+        fin!("yin", Some(I), Some(EN)),
+        fin!("ang", None, Some(ANG)),
+        fin!("eng", None, Some(ENG)),
+        fin!("uei", Some(U), Some(EI)),
+        fin!("ui", Some(U), Some(EI)),
+        fin!("wei", Some(U), Some(EI)),
+        fin!("uen", Some(U), Some(EN)),
+        fin!("yueh", Some(IU), Some(EH)),
+        fin!("yue", Some(IU), Some(EH)),
+        fin!("iue", Some(IU), Some(EH)),
+        fin!("ueh", Some(IU), Some(EH)),
+        fin!("ue", Some(IU), Some(EH)),
+        fin!("ve", Some(IU), Some(EH)),
+        fin!("uai", Some(U), Some(AI)),
+        fin!("wai", Some(U), Some(AI)),
+        fin!("uan", Some(U), Some(AN)),
+        fin!("wan", Some(U), Some(AN)),
+        fin!("un", Some(U), Some(EN)),
+        fin!("wen", Some(U), Some(EN)),
+        fin!("wun", Some(U), Some(EN)),
+        fin!("ung", Some(U), Some(ENG)),
+        fin!("ong", Some(U), Some(ENG)),
+        fin!("van", Some(IU), Some(AN)),
+        fin!("er", None, Some(ER)),
+        fin!("ai", None, Some(AI)),
+        fin!("ei", None, Some(EI)),
+        fin!("ao", None, Some(AU)),
+        fin!("au", None, Some(AU)),
+        fin!("ou", None, Some(OU)),
+        fin!("an", None, Some(AN)),
+        fin!("en", None, Some(EN)),
+        fin!("yi", None, Some(I)),
+        fin!("ia", Some(I), Some(A)),
+        fin!("ya", Some(I), Some(A)),
+        fin!("ieh", Some(I), Some(EH)),
+        fin!("ie", Some(I), Some(EH)),
+        fin!("yeh", Some(I), Some(EH)),
+        fin!("ye", Some(I), Some(EH)),
+        fin!("in", Some(I), Some(EN)),
+        fin!("wu", Some(U), None),
+        fin!("ua", Some(U), Some(A)),
+        fin!("wa", Some(U), Some(A)),
+        fin!("uo", Some(U), Some(O)),
+        fin!("wo", Some(U), Some(O)),
+        fin!("yu", Some(IU), None),
+        fin!("ve", Some(IU), Some(EH)),
+        fin!("vn", Some(IU), Some(EN)),
+        fin!("ih", None, None),
+        fin!("a", None, Some(A)),
+        fin!("o", None, Some(O)),
+        fin!("eh", None, Some(EH)),
+        fin!("e", None, Some(E)),
+        fin!("v", Some(IU), None),
+        fin!("i", Some(I), None),
+        fin!("u", Some(U), None),
+        fin!("E", None, Some(EH)),
+        fin!("n", None, Some(EN)),
+        fin!("ng", None, Some(ENG)),
+        fin!("r", None, None),
+        fin!("z", None, None),
+    ];
+}

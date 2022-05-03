@@ -107,21 +107,21 @@ pub extern "C" fn PhoneticEditorSyllable(editor_keymap_ptr: *mut c_void, pho_inx
     let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
     let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
-    let key_buf = editor_keymap.editor.observe();
+    let syllable = editor_keymap.editor.observe();
 
-    pho_inx[0] = match key_buf.0 {
+    pho_inx[0] = match syllable.initial {
         Some(b) => b.initial_index(),
         None => 0,
     };
-    pho_inx[1] = match key_buf.1 {
+    pho_inx[1] = match syllable.medial {
         Some(b) => b.medial_index(),
         None => 0,
     };
-    pho_inx[2] = match key_buf.2 {
-        Some(b) => b.final_index(),
+    pho_inx[2] = match syllable.rime {
+        Some(b) => b.rime_index(),
         None => 0,
     };
-    pho_inx[3] = match key_buf.3 {
+    pho_inx[3] = match syllable.tone {
         Some(b) => b.tone_index(),
         None => 0,
     };
@@ -133,21 +133,21 @@ pub extern "C" fn PhoneticEditorSyllableAlt(editor_keymap_ptr: *mut c_void, pho_
     let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     // FIXME
-    let key_buf = editor_keymap.editor.observe();
+    let syllable = editor_keymap.editor.observe();
 
-    pho_inx[0] = match key_buf.0 {
+    pho_inx[0] = match syllable.initial {
         Some(b) => b.initial_index(),
         None => 0,
     };
-    pho_inx[1] = match key_buf.1 {
+    pho_inx[1] = match syllable.medial {
         Some(b) => b.medial_index(),
         None => 0,
     };
-    pho_inx[2] = match key_buf.2 {
-        Some(b) => b.final_index(),
+    pho_inx[2] = match syllable.rime {
+        Some(b) => b.rime_index(),
         None => 0,
     };
-    pho_inx[3] = match key_buf.3 {
+    pho_inx[3] = match syllable.tone {
         Some(b) => b.tone_index(),
         None => 0,
     };
@@ -169,8 +169,8 @@ pub extern "C" fn PhoneticEditorKeyseq(editor_keymap_ptr: *mut c_void, key_seq: 
 pub extern "C" fn PhoneticEditorSyllableIndex(editor_keymap_ptr: *mut c_void) -> u16 {
     let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
-    let key_buf = editor_keymap.editor.observe();
-    key_buf.encode()
+    let syllable = editor_keymap.editor.observe();
+    syllable.as_u16()
 }
 
 #[no_mangle]
@@ -178,8 +178,8 @@ pub extern "C" fn PhoneticEditorSyllableIndexAlt(editor_keymap_ptr: *mut c_void)
     let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     // FIXME
-    let key_buf = editor_keymap.editor.observe();
-    key_buf.encode()
+    let syllable = editor_keymap.editor.observe();
+    syllable.as_u16()
 }
 
 #[no_mangle]

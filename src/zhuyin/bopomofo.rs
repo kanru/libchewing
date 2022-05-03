@@ -7,13 +7,13 @@ use thiserror::Error;
 ///
 /// 1. Initial sounds: ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙ
 /// 2. Medial glides: ㄧㄨㄩ
-/// 3. Final rhymes: ㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦ
+/// 3. Rimes: ㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦ
 /// 4. Tonal marks: ˙ˊˇˋ
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BopomofoKind {
     Initial = 0,
-    MedialGlide,
-    Final,
+    Medial,
+    Rime,
     Tone,
 }
 
@@ -114,16 +114,16 @@ const INITIAL_MAP: [Bopomofo; 21] = [
     B, P, M, F, D, T, N, L, G, K, H, J, Q, X, ZH, CH, SH, R, Z, C, S,
 ];
 const MEDIAL_MAP: [Bopomofo; 3] = [I, U, IU];
-const FINAL_MAP: [Bopomofo; 13] = [A, O, E, EH, AI, EI, AU, OU, AN, EN, ANG, ENG, ER];
+const RIME_MAP: [Bopomofo; 13] = [A, O, E, EH, AI, EI, AU, OU, AN, EN, ANG, ENG, ER];
 const TONE_MAP: [Bopomofo; 4] = [TONE5, TONE2, TONE3, TONE4];
 
 impl Bopomofo {
-    pub fn kind(&self) -> BopomofoKind {
+    pub const fn kind(&self) -> BopomofoKind {
         match self {
             B | P | M | F | D | T | N | L | G | K | H | J | Q | X | ZH | CH | SH | R | Z | C
             | S => BopomofoKind::Initial,
-            I | U | IU => BopomofoKind::MedialGlide,
-            A | O | E | EH | AI | EI | AU | OU | AN | EN | ANG | ENG | ER => BopomofoKind::Final,
+            I | U | IU => BopomofoKind::Medial,
+            A | O | E | EH | AI | EI | AU | OU | AN | EN | ANG | ENG | ER => BopomofoKind::Rime,
             TONE1 | TONE2 | TONE3 | TONE4 | TONE5 => BopomofoKind::Tone,
         }
     }
@@ -133,8 +133,8 @@ impl Bopomofo {
     pub fn from_medial(index: i32) -> Bopomofo {
         MEDIAL_MAP[(index - 1) as usize]
     }
-    pub fn from_final(index: i32) -> Bopomofo {
-        FINAL_MAP[(index - 1) as usize]
+    pub fn from_rime(index: i32) -> Bopomofo {
+        RIME_MAP[(index - 1) as usize]
     }
     pub fn from_tone(index: i32) -> Bopomofo {
         TONE_MAP[(index - 1) as usize]
@@ -146,8 +146,8 @@ impl Bopomofo {
     pub fn medial_index(&self) -> i32 {
         (MEDIAL_MAP.iter().position(|b| b == self).unwrap() + 1) as i32
     }
-    pub fn final_index(&self) -> i32 {
-        (FINAL_MAP.iter().position(|b| b == self).unwrap() + 1) as i32
+    pub fn rime_index(&self) -> i32 {
+        (RIME_MAP.iter().position(|b| b == self).unwrap() + 1) as i32
     }
     pub fn tone_index(&self) -> i32 {
         (TONE_MAP.iter().position(|b| b == self).unwrap() + 1) as i32

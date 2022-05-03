@@ -1,80 +1,75 @@
 //! Hsu keyboard layout
 
 use crate::{
-    bopomofo::{Bopomofo, BopomofoKind},
     keymap::KeyCode,
+    zhuyin::{Bopomofo, BopomofoKind, Syllable},
 };
 
-use super::{KeyBehavior, KeyBuf, KeyEvent, PhoneticKeyEditor};
+use super::{KeyBehavior, KeyEvent, PhoneticKeyEditor};
 
 #[derive(Debug)]
 pub struct Hsu {
-    key_buf: KeyBuf,
+    syllable: Syllable,
 }
 
 impl Hsu {
     pub fn new() -> Hsu {
         Hsu {
-            key_buf: Default::default(),
-        }
-    }
-    pub fn from_raw_parts(pho_inx: &[i32]) -> Hsu {
-        Hsu {
-            key_buf: KeyBuf::from_raw_parts(pho_inx),
+            syllable: Default::default(),
         }
     }
     fn is_hsu_end_key(&self, key: KeyEvent) -> bool {
         // TODO allow customize end key mapping
         match key.code {
             KeyCode::S | KeyCode::D | KeyCode::F | KeyCode::J | KeyCode::Space => {
-                self.key_buf.0.is_some() || self.key_buf.1.is_some() || self.key_buf.2.is_some()
+                !self.syllable.is_empty()
             }
             _ => false,
         }
     }
     fn has_initial_or_medial(&self) -> bool {
-        self.key_buf.0.is_some() || self.key_buf.1.is_some()
+        self.syllable.has_initial() || self.syllable.has_medial()
     }
 }
 
 impl PhoneticKeyEditor for Hsu {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         if self.is_hsu_end_key(key) {
-            if self.key_buf.1.is_none() && self.key_buf.2.is_none() {
-                if let Some(key) = self.key_buf.0 {
+            if !self.syllable.has_medial() && !self.syllable.has_rime() {
+                if let Some(key) = self.syllable.initial {
                     match key {
                         Bopomofo::J => {
-                            self.key_buf.0.replace(Bopomofo::ZH);
+                            self.syllable.update(Bopomofo::ZH);
                         }
                         Bopomofo::Q => {
-                            self.key_buf.0.replace(Bopomofo::CH);
+                            self.syllable.update(Bopomofo::CH);
                         }
                         Bopomofo::X => {
-                            self.key_buf.0.replace(Bopomofo::SH);
+                            self.syllable.update(Bopomofo::SH);
                         }
                         Bopomofo::H => {
-                            self.key_buf.0.take();
-                            self.key_buf.2.replace(Bopomofo::O);
+                            self.syllable.initial.take();
+                            self.syllable.update(Bopomofo::O);
                         }
                         Bopomofo::G => {
-                            self.key_buf.0.take();
-                            self.key_buf.2.replace(Bopomofo::E);
+                            self.syllable.initial.take();
+                            self.syllable.update(Bopomofo::E);
                         }
                         Bopomofo::M => {
-                            self.key_buf.0.take();
-                            self.key_buf.2.replace(Bopomofo::AN);
+                            self.syllable.initial.take();
+                            self.syllable.update(Bopomofo::AN);
                         }
                         Bopomofo::N => {
-                            self.key_buf.0.take();
-                            self.key_buf.2.replace(Bopomofo::EN);
+                            self.syllable.initial.take();
+                            self.syllable.update(Bopomofo::EN);
                         }
                         Bopomofo::K => {
-                            self.key_buf.0.take();
-                            self.key_buf.2.replace(Bopomofo::ANG);
+                            self.syllable.initial.take();
+                            self.syllable.update(Bopomofo::ANG);
                         }
                         Bopomofo::L => {
-                            self.key_buf.0.take();
-                            self.key_buf.2.replace(Bopomofo::ER);
+                            self.syllable.initial.take();
+                            self.syllable.update(Bopomofo::ER);
                         }
                         _ => (),
                     }
@@ -82,9 +77,9 @@ impl PhoneticKeyEditor for Hsu {
             }
 
             // fuzzy ㄍㄧ to ㄐㄧ and ㄍㄩ to ㄐㄩ
-            match (self.key_buf.0, self.key_buf.1) {
+            match (self.syllable.initial, self.syllable.medial) {
                 (Some(Bopomofo::G), Some(Bopomofo::I)) | (Some(Bopomofo::J), Some(Bopomofo::I)) => {
-                    self.key_buf.0.replace(Bopomofo::IU);
+                    self.syllable.update(Bopomofo::IU);
                 }
                 _ => (),
             }
@@ -97,7 +92,7 @@ impl PhoneticKeyEditor for Hsu {
                 KeyCode::S => Some(Bopomofo::TONE5),
                 _ => None,
             };
-            self.key_buf.3 = tone;
+            self.syllable.tone = tone;
             KeyBehavior::Commit
         } else {
             let bopomofo = match key.code {
@@ -173,26 +168,26 @@ impl PhoneticKeyEditor for Hsu {
             let kind = bopomofo.kind();
 
             // fuzzy ㄍㄧ to ㄐㄧ and ㄍㄩ to ㄐㄩ
-            match (self.key_buf.0, self.key_buf.1) {
+            match (self.syllable.initial, self.syllable.medial) {
                 (Some(Bopomofo::G), Some(Bopomofo::I)) | (Some(Bopomofo::J), Some(Bopomofo::I)) => {
-                    self.key_buf.0.replace(Bopomofo::IU);
+                    self.syllable.update(Bopomofo::IU);
                 }
                 _ => (),
             }
 
             // ㄐㄑㄒ must be followed by ㄧ or ㄩ. If not, convert them to ㄓㄔㄕ
-            if (kind == BopomofoKind::MedialGlide && bopomofo == Bopomofo::U)
-                || (kind == BopomofoKind::Final && self.key_buf.1.is_none())
+            if (kind == BopomofoKind::Medial && bopomofo == Bopomofo::U)
+                || (kind == BopomofoKind::Rime && self.syllable.medial.is_none())
             {
-                match self.key_buf.0 {
+                match self.syllable.initial {
                     Some(Bopomofo::J) => {
-                        self.key_buf.0.replace(Bopomofo::ZH);
+                        self.syllable.update(Bopomofo::ZH);
                     }
                     Some(Bopomofo::Q) => {
-                        self.key_buf.0.replace(Bopomofo::CH);
+                        self.syllable.update(Bopomofo::CH);
                     }
                     Some(Bopomofo::X) => {
-                        self.key_buf.0.replace(Bopomofo::SH);
+                        self.syllable.update(Bopomofo::SH);
                     }
                     _ => (),
                 }
@@ -200,54 +195,39 @@ impl PhoneticKeyEditor for Hsu {
 
             // Likeweise, when ㄓㄔㄕ is followed by ㄧ or ㄩ, convert them to ㄐㄑㄒ
             if bopomofo == Bopomofo::I || bopomofo == Bopomofo::IU {
-                match self.key_buf.0 {
+                match self.syllable.initial {
                     Some(Bopomofo::ZH) => {
-                        self.key_buf.0.replace(Bopomofo::J);
+                        self.syllable.update(Bopomofo::J);
                     }
                     Some(Bopomofo::CH) => {
-                        self.key_buf.0.replace(Bopomofo::Q);
+                        self.syllable.update(Bopomofo::Q);
                     }
                     Some(Bopomofo::SH) => {
-                        self.key_buf.0.replace(Bopomofo::X);
+                        self.syllable.update(Bopomofo::X);
                     }
                     _ => (),
                 }
             }
 
-            match kind {
-                BopomofoKind::Initial => self.key_buf.0.replace(bopomofo),
-                BopomofoKind::MedialGlide => self.key_buf.1.replace(bopomofo),
-                BopomofoKind::Final => self.key_buf.2.replace(bopomofo),
-                BopomofoKind::Tone => self.key_buf.3.replace(bopomofo),
-            };
-
+            self.syllable.update(bopomofo);
             KeyBehavior::Absorb
         }
     }
 
     fn is_entering(&self) -> bool {
-        !self.key_buf.is_empty()
+        !self.syllable.is_empty()
     }
 
     fn pop(&mut self) -> Option<Bopomofo> {
-        if self.key_buf.3.is_some() {
-            return self.key_buf.3.take();
-        } else if self.key_buf.2.is_some() {
-            return self.key_buf.2.take();
-        } else if self.key_buf.1.is_some() {
-            return self.key_buf.1.take();
-        } else if self.key_buf.0.is_some() {
-            return self.key_buf.0.take();
-        }
-        None
+        self.syllable.pop()
     }
 
     fn clear(&mut self) {
-        self.key_buf = KeyBuf(None, None, None, None);
+        self.syllable.clear();
     }
 
-    fn observe(&self) -> KeyBuf {
-        self.key_buf
+    fn observe(&self) -> Syllable {
+        self.syllable
     }
 }
 
@@ -255,9 +235,9 @@ impl PhoneticKeyEditor for Hsu {
 mod test {
 
     use crate::{
-        bopomofo::Bopomofo,
         editor::phonetic::PhoneticKeyEditor,
         keymap::{IdentityKeymap, KeyCode, Keymap, QWERTY},
+        zhuyin::Bopomofo,
     };
 
     use super::Hsu;
@@ -271,9 +251,9 @@ mod test {
         hsu.key_press(keymap.map_key(KeyCode::N));
         hsu.key_press(keymap.map_key(KeyCode::Space));
         let result = hsu.observe();
-        assert_eq!(result.0, Some(Bopomofo::X));
-        assert_eq!(result.1, Some(Bopomofo::I));
-        assert_eq!(result.2, Some(Bopomofo::EN));
+        assert_eq!(result.initial, Some(Bopomofo::X));
+        assert_eq!(result.medial, Some(Bopomofo::I));
+        assert_eq!(result.rime, Some(Bopomofo::EN));
     }
 
     #[test]
@@ -283,6 +263,6 @@ mod test {
         hsu.key_press(keymap.map_key(KeyCode::N));
         hsu.key_press(keymap.map_key(KeyCode::F));
         let result = hsu.observe();
-        assert_eq!(result.2, Some(Bopomofo::EN));
+        assert_eq!(result.rime, Some(Bopomofo::EN));
     }
 }

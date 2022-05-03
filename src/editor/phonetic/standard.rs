@@ -4,26 +4,21 @@
 //! all platforms and the most commonly used one.
 
 use crate::{
-    bopomofo::{Bopomofo, BopomofoKind},
     keymap::{KeyEvent, KeyIndex},
+    zhuyin::{Bopomofo, BopomofoKind, Syllable},
 };
 
-use super::{KeyBehavior, KeyBuf, PhoneticKeyEditor};
+use super::{KeyBehavior, PhoneticKeyEditor};
 
 #[derive(Debug)]
 pub struct Standard {
-    key_buf: KeyBuf,
+    syllable: Syllable,
 }
 
 impl Standard {
     pub fn new() -> Standard {
         Standard {
-            key_buf: Default::default(),
-        }
-    }
-    pub fn from_raw_parts(pho_inx: &[i32]) -> Standard {
-        Standard {
-            key_buf: KeyBuf::from_raw_parts(pho_inx),
+            syllable: Syllable::new(),
         }
     }
 }
@@ -75,21 +70,15 @@ impl PhoneticKeyEditor for Standard {
             KeyIndex::K48 => Bopomofo::TONE1,
             _ => return KeyBehavior::KeyError,
         };
-        let kind = bopomofo.kind();
-
-        if kind == BopomofoKind::Tone {
-            if self.key_buf.0.is_some()
-                || self.key_buf.1.is_some()
-                || self.key_buf.2.is_some()
-                || self.key_buf.3.is_some()
-            {
+        if bopomofo.kind() == BopomofoKind::Tone {
+            if !self.syllable.is_empty() {
                 if bopomofo != Bopomofo::TONE1 {
-                    self.key_buf.3.replace(bopomofo);
+                    self.syllable.update(bopomofo);
                 }
                 return KeyBehavior::Commit;
             }
         } else {
-            self.key_buf.3.take();
+            self.syllable.tone.take();
         }
 
         // In C libchewing TONE1 / Space is not a phonetic symbol
@@ -97,38 +86,24 @@ impl PhoneticKeyEditor for Standard {
             return KeyBehavior::KeyError;
         }
 
-        match kind {
-            BopomofoKind::Initial => self.key_buf.0.replace(bopomofo),
-            BopomofoKind::MedialGlide => self.key_buf.1.replace(bopomofo),
-            BopomofoKind::Final => self.key_buf.2.replace(bopomofo),
-            BopomofoKind::Tone => self.key_buf.3.replace(bopomofo),
-        };
+        self.syllable.update(bopomofo);
         KeyBehavior::Absorb
     }
 
     fn is_entering(&self) -> bool {
-        !self.key_buf.is_empty()
+        !self.syllable.is_empty()
     }
 
     fn pop(&mut self) -> Option<Bopomofo> {
-        if self.key_buf.3.is_some() {
-            return self.key_buf.3.take();
-        } else if self.key_buf.2.is_some() {
-            return self.key_buf.2.take();
-        } else if self.key_buf.1.is_some() {
-            return self.key_buf.1.take();
-        } else if self.key_buf.0.is_some() {
-            return self.key_buf.0.take();
-        }
-        None
+        self.syllable.pop()
     }
 
     fn clear(&mut self) {
-        self.key_buf = KeyBuf(None, None, None, None);
+        self.syllable.clear()
     }
 
-    fn observe(&self) -> KeyBuf {
-        self.key_buf
+    fn observe(&self) -> Syllable {
+        self.syllable
     }
 }
 

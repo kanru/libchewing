@@ -1,1 +1,1 @@
-pub mod phonetic;
+pub mod syllable;

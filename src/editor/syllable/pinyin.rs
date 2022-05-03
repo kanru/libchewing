@@ -5,7 +5,7 @@ use crate::{
     zhuyin::{Bopomofo, Syllable},
 };
 
-use super::{KeyBehavior, PhoneticKeyEditor};
+use super::{KeyBehavior, SyllableEditor};
 
 const MAX_PINYIN_LEN: usize = 10;
 
@@ -60,7 +60,7 @@ impl Pinyin {
     }
 }
 
-impl PhoneticKeyEditor for Pinyin {
+impl SyllableEditor for Pinyin {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         if ![
             KeyCode::Space,

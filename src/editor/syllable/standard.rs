@@ -8,7 +8,7 @@ use crate::{
     zhuyin::{Bopomofo, BopomofoKind, Syllable},
 };
 
-use super::{KeyBehavior, PhoneticKeyEditor};
+use super::{KeyBehavior, SyllableEditor};
 
 #[derive(Debug)]
 pub struct Standard {
@@ -23,7 +23,7 @@ impl Standard {
     }
 }
 
-impl PhoneticKeyEditor for Standard {
+impl SyllableEditor for Standard {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         let bopomofo = match key.index {
             KeyIndex::K1 => Bopomofo::B,
@@ -110,7 +110,7 @@ impl PhoneticKeyEditor for Standard {
 #[cfg(test)]
 mod test {
     use crate::{
-        editor::phonetic::{KeyBehavior, PhoneticKeyEditor},
+        editor::syllable::{KeyBehavior, SyllableEditor},
         keymap::{IdentityKeymap, KeyCode, Keymap, QWERTY},
     };
 

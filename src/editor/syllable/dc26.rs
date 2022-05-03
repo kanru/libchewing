@@ -5,7 +5,7 @@ use crate::{
     zhuyin::{Bopomofo, Syllable},
 };
 
-use super::{KeyBehavior, PhoneticKeyEditor};
+use super::{KeyBehavior, SyllableEditor};
 
 #[derive(Debug)]
 pub struct DaiChien26 {
@@ -44,7 +44,7 @@ fn default_or_alt(source: Option<Bopomofo>, default: Bopomofo, alt: Bopomofo) ->
     }
 }
 
-impl PhoneticKeyEditor for DaiChien26 {
+impl SyllableEditor for DaiChien26 {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         if self.is_end_key(key.index) {
             let tone = match key.index {

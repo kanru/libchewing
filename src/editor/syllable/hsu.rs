@@ -5,7 +5,7 @@ use crate::{
     zhuyin::{Bopomofo, BopomofoKind, Syllable},
 };
 
-use super::{KeyBehavior, KeyEvent, PhoneticKeyEditor};
+use super::{KeyBehavior, KeyEvent, SyllableEditor};
 
 #[derive(Debug)]
 pub struct Hsu {
@@ -32,7 +32,7 @@ impl Hsu {
     }
 }
 
-impl PhoneticKeyEditor for Hsu {
+impl SyllableEditor for Hsu {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         if self.is_hsu_end_key(key) {
             if !self.syllable.has_medial() && !self.syllable.has_rime() {
@@ -235,7 +235,7 @@ impl PhoneticKeyEditor for Hsu {
 mod test {
 
     use crate::{
-        editor::phonetic::PhoneticKeyEditor,
+        editor::syllable::SyllableEditor,
         keymap::{IdentityKeymap, KeyCode, Keymap, QWERTY},
         zhuyin::Bopomofo,
     };

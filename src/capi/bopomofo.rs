@@ -5,31 +5,31 @@ use std::{
 };
 
 use crate::{
-    editor::phonetic::{
+    editor::syllable::{
         dc26::DaiChien26, et26::Et26, hsu::Hsu, pinyin::Pinyin, standard::Standard, KeyBehavior,
-        KeyboardLayoutCompat, PhoneticKeyEditor,
+        KeyboardLayoutCompat, SyllableEditor,
     },
     keymap::{IdentityKeymap, KeyCode, KeyIndexFromQwerty, Keymap, QWERTY},
 };
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct PhoneticKeyEditorWithKeymap {
+pub struct SyllableEditorWithKeymap {
     kb_type: KeyboardLayoutCompat,
     keymap: Box<dyn Keymap>,
-    editor: Box<dyn PhoneticKeyEditor>,
+    editor: Box<dyn SyllableEditor>,
 }
 
 #[no_mangle]
 pub extern "C" fn NewPhoneticEditor(kb_type: KeyboardLayoutCompat) -> *mut c_void {
     use KeyboardLayoutCompat as KB;
-    let editor: Box<PhoneticKeyEditorWithKeymap> = match kb_type {
-        KB::Default => Box::new(PhoneticKeyEditorWithKeymap {
+    let editor: Box<SyllableEditorWithKeymap> = match kb_type {
+        KB::Default => Box::new(SyllableEditorWithKeymap {
             kb_type,
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(Standard::new()),
         }),
-        KB::Hsu => Box::new(PhoneticKeyEditorWithKeymap {
+        KB::Hsu => Box::new(SyllableEditorWithKeymap {
             kb_type,
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(Hsu::new()),
@@ -37,29 +37,29 @@ pub extern "C" fn NewPhoneticEditor(kb_type: KeyboardLayoutCompat) -> *mut c_voi
         KB::Ibm => todo!(),
         KB::GinYieh => todo!(),
         KB::Et => todo!(),
-        KB::Et26 => Box::new(PhoneticKeyEditorWithKeymap {
+        KB::Et26 => Box::new(SyllableEditorWithKeymap {
             kb_type,
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(Et26::new()),
         }),
         KB::Dvorak => todo!(),
         KB::DvorakHsu => todo!(),
-        KB::DachenCp26 => Box::new(PhoneticKeyEditorWithKeymap {
+        KB::DachenCp26 => Box::new(SyllableEditorWithKeymap {
             kb_type,
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(DaiChien26::new()),
         }),
-        KB::HanyuPinyin => Box::new(PhoneticKeyEditorWithKeymap {
+        KB::HanyuPinyin => Box::new(SyllableEditorWithKeymap {
             kb_type,
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(Pinyin::hanyu()),
         }),
-        KB::ThlPinyin => Box::new(PhoneticKeyEditorWithKeymap {
+        KB::ThlPinyin => Box::new(SyllableEditorWithKeymap {
             kb_type,
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(Pinyin::thl()),
         }),
-        KB::Mps2Pinyin => Box::new(PhoneticKeyEditorWithKeymap {
+        KB::Mps2Pinyin => Box::new(SyllableEditorWithKeymap {
             kb_type,
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(Pinyin::mps2()),
@@ -71,13 +71,13 @@ pub extern "C" fn NewPhoneticEditor(kb_type: KeyboardLayoutCompat) -> *mut c_voi
 
 #[no_mangle]
 pub extern "C" fn FreePhoneticEditor(editor_keymap_ptr: *mut c_void) {
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     unsafe { Box::from_raw(editor_keymap_ptr) };
 }
 
 #[no_mangle]
 pub extern "C" fn PhoneticEditorInput(editor_keymap_ptr: *mut c_void, key: i32) -> KeyBehavior {
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     let key_code = match (key as u8).as_key_code() {
         Some(key_code) => key_code,
@@ -105,7 +105,7 @@ pub extern "C" fn PhoneticEditorInput(editor_keymap_ptr: *mut c_void, key: i32) 
 #[no_mangle]
 pub extern "C" fn PhoneticEditorSyllable(editor_keymap_ptr: *mut c_void, pho_inx: *mut i32) {
     let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     let syllable = editor_keymap.editor.observe();
 
@@ -130,7 +130,7 @@ pub extern "C" fn PhoneticEditorSyllable(editor_keymap_ptr: *mut c_void, pho_inx
 #[no_mangle]
 pub extern "C" fn PhoneticEditorSyllableAlt(editor_keymap_ptr: *mut c_void, pho_inx: *mut i32) {
     let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     // FIXME
     let syllable = editor_keymap.editor.observe();
@@ -156,7 +156,7 @@ pub extern "C" fn PhoneticEditorSyllableAlt(editor_keymap_ptr: *mut c_void, pho_
 #[no_mangle]
 pub extern "C" fn PhoneticEditorKeyseq(editor_keymap_ptr: *mut c_void, key_seq: *mut c_char) {
     let key_seq = unsafe { slice::from_raw_parts_mut(key_seq as *mut u8, 10) };
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     if let Some(key_seq_str) = editor_keymap.editor.key_seq() {
         let key_seq_cstr = CString::new(key_seq_str).unwrap();
@@ -167,7 +167,7 @@ pub extern "C" fn PhoneticEditorKeyseq(editor_keymap_ptr: *mut c_void, key_seq: 
 
 #[no_mangle]
 pub extern "C" fn PhoneticEditorSyllableIndex(editor_keymap_ptr: *mut c_void) -> u16 {
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     let syllable = editor_keymap.editor.observe();
     syllable.as_u16()
@@ -175,7 +175,7 @@ pub extern "C" fn PhoneticEditorSyllableIndex(editor_keymap_ptr: *mut c_void) ->
 
 #[no_mangle]
 pub extern "C" fn PhoneticEditorSyllableIndexAlt(editor_keymap_ptr: *mut c_void) -> u16 {
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     // FIXME
     let syllable = editor_keymap.editor.observe();
@@ -184,28 +184,28 @@ pub extern "C" fn PhoneticEditorSyllableIndexAlt(editor_keymap_ptr: *mut c_void)
 
 #[no_mangle]
 pub extern "C" fn PhoneticEditorRemoveLast(editor_keymap_ptr: *mut c_void) {
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     editor_keymap.editor.pop();
 }
 
 #[no_mangle]
 pub extern "C" fn PhoneticEditorRemoveAll(editor_keymap_ptr: *mut c_void) {
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     editor_keymap.editor.clear();
 }
 
 #[no_mangle]
 pub extern "C" fn PhoneticEditorKbType(editor_keymap_ptr: *mut c_void) -> i32 {
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     editor_keymap.kb_type as i32
 }
 
 #[no_mangle]
 pub extern "C" fn PhoneticEditorIsEntering(editor_keymap_ptr: *mut c_void) -> bool {
-    let editor_keymap_ptr: *mut PhoneticKeyEditorWithKeymap = editor_keymap_ptr.cast();
+    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     editor_keymap.editor.is_entering()
 }

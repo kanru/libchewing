@@ -58,7 +58,7 @@ pub enum KeyBehavior {
     OpenSymbolTable,
 }
 
-pub trait PhoneticKeyEditor: Debug {
+pub trait SyllableEditor: Debug {
     /// Handles a key press event and returns the behavior of the layout.
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior;
     /// Returns whether the editor contains any input.

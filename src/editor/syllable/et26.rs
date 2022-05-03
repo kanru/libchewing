@@ -5,7 +5,7 @@ use crate::{
     zhuyin::{Bopomofo, BopomofoKind, Syllable},
 };
 
-use super::{KeyBehavior, PhoneticKeyEditor};
+use super::{KeyBehavior, SyllableEditor};
 
 #[derive(Debug)]
 pub struct Et26 {
@@ -31,7 +31,7 @@ impl Et26 {
     }
 }
 
-impl PhoneticKeyEditor for Et26 {
+impl SyllableEditor for Et26 {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         if self.is_end_key(key.code) {
             if !self.syllable.has_medial() && !self.syllable.has_rime() {

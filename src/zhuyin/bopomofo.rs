@@ -1,3 +1,4 @@
+use miette::Diagnostic;
 use thiserror::Error;
 
 /// The category of the phonetic symbols
@@ -20,7 +21,7 @@ pub enum BopomofoKind {
 /// Zhuyin Fuhao, often shortened as zhuyin and commonly called bopomofo
 ///
 /// <https://simple.m.wikipedia.org/wiki/Zhuyin>
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Bopomofo {
     /// ㄅ
     B = 0,
@@ -154,9 +155,10 @@ impl Bopomofo {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Diagnostic, Debug)]
+#[diagnostic(code(chewing::bopomofo_parse_error))]
 pub enum BopomofoParseError {
-    #[error("unknown symbol")]
+    #[error("unknown bopomofo symbol")]
     Unknown,
 }
 

@@ -4,7 +4,7 @@ use std::{
     slice,
 };
 
-use crate::{
+use chewing::{
     editor::syllable::{
         dc26::DaiChien26, et26::Et26, hsu::Hsu, pinyin::Pinyin, standard::Standard, KeyBehavior,
         KeyboardLayoutCompat, SyllableEditor,

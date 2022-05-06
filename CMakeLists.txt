@@ -459,11 +459,12 @@ add_library(common OBJECT
 )
 
 if (WITH_RUST)
-    add_rust_library(TARGET chewing_internal WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    add_rust_library(TARGET chewing_internal WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/internal")
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
     add_definitions(-DHAVE_RUST)
     add_dependencies(chewing chewing_internal)
     add_dependencies(common chewing_internal)
+    add_dependencies(userphrase chewing_internal)
     foreach(target ${ALL_TESTS})
         target_link_libraries(${target} chewing_internal)
     endforeach()

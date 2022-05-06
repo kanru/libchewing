@@ -1,3 +1,4 @@
+use miette::Diagnostic;
 use thiserror::Error;
 
 use super::{Bopomofo, BopomofoKind};
@@ -5,7 +6,7 @@ use super::{Bopomofo, BopomofoKind};
 /// The consonants and vowels that are taken together to make a single sound.
 ///
 /// <https://en.m.wikipedia.org/wiki/Syllable#Chinese_model>
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Syllable {
     pub initial: Option<Bopomofo>,
     pub medial: Option<Bopomofo>,
@@ -47,6 +48,10 @@ impl Syllable {
         self.tone.is_some()
     }
     pub fn as_u16(&self) -> u16 {
+        assert!(
+            !self.is_empty(),
+            "empty syllable cannot be converted to u16"
+        );
         let initial = self.initial.map_or(0, |v| v as u16 + 1);
         let medial = self.medial.map_or(0, |v| v as u16 - 20);
         let rime = self.rime.map_or(0, |v| v as u16 - 23);
@@ -127,18 +132,19 @@ impl SyllableBuilder {
         self.syllable
     }
 }
-#[derive(Error, Debug)]
+#[derive(Error, Diagnostic, Debug)]
 #[error("syllable decode error: {msg}")]
+#[diagnostic(code(chewing::syllable_decode_error))]
 pub struct SyllableDecodeError {
     msg: String,
 }
 
 #[macro_export]
 macro_rules! syl {
-    () => { Syllable::new() };
+    () => { $crate::zhuyin::Syllable::new() };
     ($($bopomofo:expr),+) => {
         {
-            let mut builder = Syllable::builder();
+            let mut builder = $crate::zhuyin::Syllable::builder();
             $(builder = builder.insert($bopomofo);)+
             builder.build()
         }
@@ -160,6 +166,12 @@ mod test {
 
         let syl = Syllable::builder().insert(Bopomofo::F).build();
         assert_eq!(0x800, syl.as_u16());
+    }
+
+    #[test]
+    #[should_panic]
+    fn empty_syllable_as_u16() {
+        Syllable::builder().build().as_u16();
     }
 
     #[test]

@@ -306,10 +306,7 @@ macro_rules! fin {
 
 mod table {
 
-    use crate::{
-        syl,
-        zhuyin::{Bopomofo::*, Syllable},
-    };
+    use crate::{syl, zhuyin::Bopomofo::*};
 
     use super::{AmbiguousMapEntry, FinalMapEntry, InitialMapEntry};
 

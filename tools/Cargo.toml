@@ -1,0 +1,10 @@
+[package]
+name = "chewing-tools"
+version = "0.5.1-alpha.1"
+edition = "2021"
+
+[dependencies]
+chewing = { version = "0.5.1-alpha.1", path = ".." }
+thiserror = "1.0.31"
+miette = { version = "4.7.0", features = ["fancy"] }
+clap = "3.1.16"

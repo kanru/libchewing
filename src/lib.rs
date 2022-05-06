@@ -2,7 +2,7 @@
 //!
 //! 1. **Phonetic Key**
 
-pub mod capi;
+pub mod dictionary;
 pub mod editor;
 pub mod keymap;
 pub mod zhuyin;

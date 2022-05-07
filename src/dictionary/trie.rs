@@ -208,10 +208,6 @@ fn trie_leaf_iter(dict: &TrieDictionary, begin: usize, end: usize) -> Phrases {
 }
 
 impl Dictionary for TrieDictionary {
-    fn lookup_word(&self, syllable: Syllable) -> Phrases {
-        self.lookup_phrase(&[syllable])
-    }
-
     fn lookup_phrase(&self, syllables: &[Syllable]) -> Phrases {
         let chunk_size = trie_node::SIZE.unwrap();
         let root = trie_node::View::new(self.dict.as_slice());
@@ -240,7 +236,7 @@ impl Dictionary for TrieDictionary {
         self.info.clone()
     }
 
-    fn as_mut(&mut self) -> Option<&mut dyn DictionaryMut> {
+    fn as_dict_mut(&mut self) -> Option<&mut dyn DictionaryMut> {
         None
     }
 }

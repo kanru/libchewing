@@ -1,6 +1,6 @@
 //! Dictionaries for looking up phrases.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use miette::Diagnostic;
 use thiserror::Error;
@@ -111,7 +111,7 @@ pub type Phrases<'a> = Box<dyn Iterator<Item = (String, u32)> + 'a>;
 /// use chewing::{dictionary::Dictionary, syl, zhuyin::Bopomofo};
 ///
 /// let mut dict = HashMap::new();
-/// let dict_mut = dict.as_mut().unwrap();
+/// let dict_mut = dict.as_dict_mut().unwrap();
 /// dict_mut.insert(&[syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], "測", 100)?;
 ///
 /// for (phrase, freq) in dict.lookup_word(
@@ -125,15 +125,18 @@ pub type Phrases<'a> = Box<dyn Iterator<Item = (String, u32)> + 'a>;
 /// ```
 pub trait Dictionary {
     /// Returns an iterator to all single syllable words matched by the
-    /// syllable, if any.
-    fn lookup_word(&self, syllable: Syllable) -> Phrases;
-    /// Returns an iterator to all phrases matched by the syllables, if any.
+    /// syllable, if any. The result does not guarantee any sorting order.
+    fn lookup_word(&self, syllable: Syllable) -> Phrases {
+        self.lookup_phrase(&[syllable])
+    }
+    /// Returns an iterator to all phrases matched by the syllables, if any. The
+    /// result does not guarantee any sorting order.
     fn lookup_phrase(&self, syllables: &[Syllable]) -> Phrases;
     /// Returns information about the dictionary instance.
     fn about(&self) -> DictionaryInfo;
     /// Returns a mutable reference to the dictionary if the underlying
     /// implementation allows update.
-    fn as_mut(&mut self) -> Option<&mut dyn DictionaryMut>;
+    fn as_dict_mut(&mut self) -> Option<&mut dyn DictionaryMut>;
 }
 
 /// An interface for updating dictionaries.
@@ -153,7 +156,7 @@ pub trait Dictionary {
 /// use chewing::{dictionary::Dictionary, syl, zhuyin::Bopomofo};
 ///
 /// let mut dict = HashMap::new();
-/// let dict_mut = dict.as_mut().unwrap();
+/// let dict_mut = dict.as_dict_mut().unwrap();
 /// dict_mut.insert(&[syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], "測", 100)?;
 /// # Ok(())
 /// # }
@@ -168,10 +171,6 @@ pub trait DictionaryMut {
 }
 
 impl Dictionary for HashMap<Vec<Syllable>, Vec<(String, u32)>> {
-    fn lookup_word(&self, syllable: Syllable) -> Phrases {
-        self.lookup_phrase(&[syllable])
-    }
-
     fn lookup_phrase(&self, syllables: &[Syllable]) -> Phrases {
         self.get(syllables)
             .cloned()
@@ -183,7 +182,7 @@ impl Dictionary for HashMap<Vec<Syllable>, Vec<(String, u32)>> {
         Default::default()
     }
 
-    fn as_mut(&mut self) -> Option<&mut dyn DictionaryMut> {
+    fn as_dict_mut(&mut self) -> Option<&mut dyn DictionaryMut> {
         Some(self)
     }
 }
@@ -202,6 +201,128 @@ impl DictionaryMut for HashMap<Vec<Syllable>, Vec<(String, u32)>> {
             });
         }
         vec.push((phrase.to_owned(), frequency));
+        Ok(())
+    }
+}
+
+/// A block list contains unwanted phrases.
+pub trait BlockList {
+    /// Returns if whether a phrase is in the block list.
+    fn is_blocked(&self, phrase: &str) -> bool;
+}
+
+impl BlockList for HashSet<String> {
+    fn is_blocked(&self, phrase: &str) -> bool {
+        self.contains(phrase)
+    }
+}
+
+/// A collection of dictionaries that returns the union of the lookup results.
+/// # Examples
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use std::collections::{HashMap, HashSet};
+///
+/// use chewing::{dictionary::{ChainedDictionary, Dictionary}, syl, zhuyin::Bopomofo};
+///
+/// let mut sys_dict = Box::new(HashMap::new());
+/// let mut user_dict = Box::new(HashMap::new());
+/// sys_dict.insert(
+///     vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]],
+///     vec![("測".to_string(), 1), ("冊".to_string(), 1), ("側".to_string(), 1)]
+/// );
+/// user_dict.insert(
+///     vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]],
+///     vec![("策".to_string(), 100), ("冊".to_string(), 100)]
+/// );
+///
+/// let user_block_list = Box::new(HashSet::from(["側".to_string()]));
+///
+/// let dict = ChainedDictionary::new(vec![sys_dict, user_dict], vec![user_block_list]);
+/// assert_eq!(
+///     [
+///         ("策".to_string(), 100),
+///         ("冊".to_string(), 100),
+///         ("測".to_string(), 1),
+///     ]
+///     .into_iter()
+///     .collect::<HashSet<_>>(),
+///     dict.lookup_phrase(&[
+///         syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]
+///     ])
+///     .collect::<HashSet<_>>(),
+/// );
+/// # Ok(())
+/// # }
+/// ```
+pub struct ChainedDictionary {
+    inner: Vec<Box<dyn Dictionary>>,
+    blocked: Vec<Box<dyn BlockList>>,
+}
+
+impl ChainedDictionary {
+    /// Creates a new `ChainedDictionary` with the list of dictionaries and
+    /// block lists.
+    pub fn new(
+        dictionaries: Vec<Box<dyn Dictionary>>,
+        block_lists: Vec<Box<dyn BlockList>>,
+    ) -> ChainedDictionary {
+        ChainedDictionary {
+            inner: dictionaries,
+            blocked: block_lists,
+        }
+    }
+    fn is_blocked(&self, phrase: &str) -> bool {
+        self.blocked.iter().any(|b| b.is_blocked(phrase))
+    }
+}
+
+impl Dictionary for ChainedDictionary {
+    fn lookup_phrase(&self, syllables: &[Syllable]) -> Phrases {
+        self.inner
+            .iter()
+            .map(|dict| {
+                dict.lookup_phrase(syllables)
+                    .collect::<HashMap<String, u32>>()
+            })
+            .reduce(|mut accum, second| {
+                for (phrase, mut freq) in second.into_iter() {
+                    let entry = accum.entry(phrase).or_default();
+                    *entry = *entry.max(&mut freq);
+                }
+                accum
+            })
+            .map_or_else(
+                || Box::new(std::iter::empty()) as Phrases,
+                |h| Box::new(h.into_iter().filter(|(phrase, _)| !self.is_blocked(phrase))),
+            )
+    }
+
+    fn about(&self) -> DictionaryInfo {
+        DictionaryInfo {
+            name: Some("Built-in ChainedDictionary".to_string()),
+            ..Default::default()
+        }
+    }
+
+    fn as_dict_mut(&mut self) -> Option<&mut dyn DictionaryMut> {
+        Some(self)
+    }
+}
+
+impl DictionaryMut for ChainedDictionary {
+    fn insert(
+        &mut self,
+        syllables: &[Syllable],
+        phrase: &str,
+        frequency: u32,
+    ) -> Result<(), DictionaryUpdateError> {
+        for dict in &mut self.inner {
+            if let Some(dict_mut) = dict.as_dict_mut() {
+                dict_mut.insert(syllables, phrase, frequency)?;
+            }
+        }
         Ok(())
     }
 }

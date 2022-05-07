@@ -2,7 +2,6 @@
 name = "chewing-tools"
 description = "Tools of the Chewing (酷音) intelligent Zhuyin input method."
 license = "LGPL-2.1-or-later"
-license-file = "../COPYING"
 version = "0.5.1-alpha.1"
 edition = "2021"
 

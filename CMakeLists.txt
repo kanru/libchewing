@@ -226,9 +226,12 @@ endforeach()
 set(ALL_TOOLS init_database)
 if(WITH_RUST)
 add_rust_executable(TARGET init_database WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tools")
+set(DATA_COPYRIGHT "Copyright \\(c\\) 2022 libchewing Core Team")
+set(DATA_LICENSE "LGPL-2.1-or-later")
+set(DATA_VERSION ${LIBCHEWING_VERSION})
 add_custom_target(build_database
-    COMMAND init_database ${DATA_SRC_DIR}/tsi.src ${DATA_BIN_DIR}/tsi.dat
-    COMMAND init_database ${DATA_SRC_DIR}/word.src ${DATA_BIN_DIR}/word.dat
+    COMMAND init_database -c ${DATA_COPYRIGHT} -l ${DATA_LICENSE} -r ${DATA_VERSION} -n 內建詞庫 ${DATA_SRC_DIR}/tsi.src ${DATA_BIN_DIR}/tsi.dat
+    COMMAND init_database -c ${DATA_COPYRIGHT} -l ${DATA_LICENSE} -r ${DATA_VERSION} -n 內建字庫 ${DATA_SRC_DIR}/word.src ${DATA_BIN_DIR}/word.dat
 )
 add_custom_command(
     OUTPUT

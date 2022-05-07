@@ -9,7 +9,7 @@ use chewing::{
         dc26::DaiChien26, et26::Et26, hsu::Hsu, pinyin::Pinyin, standard::Standard, KeyBehavior,
         KeyboardLayoutCompat, SyllableEditor,
     },
-    keymap::{IdentityKeymap, KeyCode, KeyIndexFromQwerty, Keymap, QWERTY},
+    keymap::{IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, QWERTY},
 };
 
 #[derive(Debug)]

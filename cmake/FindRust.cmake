@@ -180,7 +180,8 @@ function(add_rust_executable)
         DEPENDS ${OUTPUT})
 
     # Create an executable target from custom target
-    add_custom_target(${ARGS_TARGET} ALL DEPENDS ${ARGS_TARGET}_target)
+    # add_custom_target(${ARGS_TARGET} ALL DEPENDS ${ARGS_TARGET}_target)
+    add_executable(${ARGS_TARGET} IMPORTED)
 
     # Specify where the executable is
     set_target_properties(${ARGS_TARGET}

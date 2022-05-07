@@ -160,10 +160,17 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/src/porting_layer/include
 )
 
+if(WITH_RUST)
+set(ALL_DATA
+    ${DATA_BIN_DIR}/tsi.dat
+    ${DATA_BIN_DIR}/word.dat
+)
+else()
 set(ALL_DATA
     ${DATA_BIN_DIR}/dictionary.dat
     ${DATA_BIN_DIR}/index_tree.dat
 )
+endif(WITH_RUST)
 
 set(ALL_INC
     ${INC_DIR}/chewing.h
@@ -216,7 +223,23 @@ foreach(target ${ALL_STATIC_TEST})
 endforeach()
 
 # tools
-set(ALL_TOOLS init_database dump_database)
+set(ALL_TOOLS init_database)
+if(WITH_RUST)
+add_rust_executable(TARGET init_database WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tools")
+add_custom_target(build_database
+    COMMAND init_database ${DATA_SRC_DIR}/tsi.src ${DATA_BIN_DIR}/tsi.dat
+    COMMAND init_database ${DATA_SRC_DIR}/word.src ${DATA_BIN_DIR}/word.dat
+)
+add_custom_command(
+    OUTPUT
+        ${ALL_DATA}
+    DEPENDS
+        ${ALL_TOOLS}
+        build_database
+        ${DATA_SRC_DIR}/word.src
+        ${DATA_SRC_DIR}/tsi.src
+)
+else()
 add_executable(init_database ${TOOLS_SRC_DIR}/init_database.c $<TARGET_OBJECTS:common>)
 add_executable(dump_database
     ${TOOLS_SRC_DIR}/dump_database.c
@@ -232,7 +255,6 @@ set_target_properties(${ALL_TOOLS} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY_RELEASE ${TOOLS_BIN_DIR}
         RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${TOOLS_BIN_DIR}
 )
-
 # tools command
 add_custom_command(
     OUTPUT
@@ -244,6 +266,9 @@ add_custom_command(
         ${DATA_SRC_DIR}/phone.cin
         ${DATA_SRC_DIR}/tsi.src
 )
+endif(WITH_RUST)
+
+
 
 # test
 set(ALL_TESTCASES

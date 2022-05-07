@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    ffi::CString,
     fmt::Debug,
     io::{self, Read, Seek, Write},
 };
@@ -9,11 +10,19 @@ use riff::{Chunk, ChunkContents, ChunkId, RIFF_ID};
 
 use crate::zhuyin::Syllable;
 
-use super::{Dictionary, DuplicatePhraseError, Phrases};
+use super::{Dictionary, DictionaryInfo, DictionaryMut, DuplicatePhraseError, Phrases};
 
 const CHEW: ChunkId = ChunkId { value: *b"CHEW" };
 const DICT: ChunkId = ChunkId { value: *b"DICT" };
 const DATA: ChunkId = ChunkId { value: *b"DATA" };
+const LIST: ChunkId = ChunkId { value: *b"LIST" };
+const INFO: ChunkId = ChunkId { value: *b"INFO" };
+const INAM: ChunkId = ChunkId { value: *b"INAM" };
+const ICOP: ChunkId = ChunkId { value: *b"ICOP" };
+const ILIC: ChunkId = ChunkId { value: *b"ILIC" };
+const ICRD: ChunkId = ChunkId { value: *b"ICRD" };
+const IREV: ChunkId = ChunkId { value: *b"IREV" };
+const ISFT: ChunkId = ChunkId { value: *b"ISFT" };
 
 define_layout!(trie_node, LittleEndian, {
     syllable: u16,
@@ -76,6 +85,7 @@ define_layout!(trie_leaf, LittleEndian, {
 /// [Trie]: https://en.m.wikipedia.org/wiki/Trie
 /// [RIFF]: https://en.m.wikipedia.org/wiki/Resource_Interchange_File_Format
 pub struct TrieDictionary {
+    info: DictionaryInfo,
     dict: Vec<u8>,
     data: Vec<u8>,
 }
@@ -113,12 +123,18 @@ impl TrieDictionary {
         }
         let mut dict_chunk = None;
         let mut data_chunk = None;
+        let mut info_chunk = None;
         for chunk in root.iter(stream) {
             match chunk.id() {
+                LIST => info_chunk = Some(chunk),
                 DICT => dict_chunk = Some(chunk),
                 DATA => data_chunk = Some(chunk),
                 _ => (),
             }
+        }
+        let mut info = DictionaryInfo::default();
+        if let Some(chunk) = info_chunk {
+            info = Self::read_dictionary_info(chunk, stream)?;
         }
         let dict = dict_chunk
             .ok_or_else(|| io::Error::new(io::ErrorKind::UnexpectedEof, "expecting DICT chunk"))?
@@ -126,7 +142,49 @@ impl TrieDictionary {
         let data = data_chunk
             .ok_or_else(|| io::Error::new(io::ErrorKind::UnexpectedEof, "expecting DATA chunk"))?
             .read_contents(stream)?;
-        Ok(TrieDictionary { dict, data })
+        Ok(TrieDictionary { info, dict, data })
+    }
+
+    fn read_dictionary_info<T>(list_chunk: Chunk, stream: &mut T) -> io::Result<DictionaryInfo>
+    where
+        T: Read + Seek,
+    {
+        let mut info = DictionaryInfo::default();
+        let chunk_type = list_chunk.read_type(stream)?;
+        if chunk_type != INFO {
+            return Ok(info);
+        }
+
+        let mut chunks = vec![];
+
+        for chunk in list_chunk.iter(stream) {
+            match chunk.id() {
+                INAM | ICOP | ILIC | ICRD | IREV | ISFT => chunks.push((chunk.id(), chunk)),
+                _ => (),
+            }
+        }
+
+        for (id, chunk) in chunks {
+            let content = match id {
+                INAM | ICOP | ILIC | ICRD | IREV | ISFT => Some(
+                    CString::new(chunk.read_contents(stream)?)?
+                        .into_string()
+                        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?,
+                ),
+                _ => None,
+            };
+            match id {
+                INAM => info.name = content,
+                ICOP => info.copyright = content,
+                ILIC => info.license = content,
+                ICRD => info.created_date = content,
+                IREV => info.version = content,
+                ISFT => info.software = content,
+                _ => (),
+            }
+        }
+
+        Ok(info)
     }
 }
 
@@ -178,11 +236,11 @@ impl Dictionary for TrieDictionary {
         )
     }
 
-    fn about(&self) -> super::DictionaryInfo {
-        todo!()
+    fn about(&self) -> DictionaryInfo {
+        self.info.clone()
     }
 
-    fn as_mut(&mut self) -> Option<&mut dyn super::DictionaryMut> {
+    fn as_mut(&mut self) -> Option<&mut dyn DictionaryMut> {
         None
     }
 }
@@ -318,6 +376,7 @@ impl Dictionary for TrieDictionary {
 ///
 /// - **INAM**: The name of the file
 /// - **ICOP**: Copyright information about the file
+/// - **ILIC**: License information about the file
 /// - **ICRD**: The date the file was created (ISO-8601 format, YYYY-MM-DD)
 /// - **IREV**: The version of the file
 /// - **ISFT**: The name of the software package used to create the file
@@ -413,6 +472,7 @@ pub struct TrieDictionaryBuilder {
     // The builder uses an arena to allocate nodes and reference each node with
     // node index.
     arena: Vec<TrieBuilderNode>,
+    about: DictionaryInfo,
 }
 
 #[derive(Debug, PartialEq)]
@@ -466,7 +526,40 @@ impl TrieDictionaryBuilder {
             frequency: 0,
             phrase: String::new(),
         };
-        TrieDictionaryBuilder { arena: vec![root] }
+        TrieDictionaryBuilder {
+            arena: vec![root],
+            about: Default::default(),
+        }
+    }
+
+    /// Sets the `name` dictionary metadata. See also [`DictionaryInfo`].
+    pub fn set_name<S: Into<String>>(&mut self, name: S) {
+        self.about.name = Some(name.into());
+    }
+
+    /// Sets the `copyright` dictionary metadata. See also [`DictionaryInfo`].
+    pub fn set_copyright<S: Into<String>>(&mut self, copyright: S) {
+        self.about.copyright = Some(copyright.into());
+    }
+
+    /// Sets the `license` dictionary metadata. See also [`DictionaryInfo`].
+    pub fn set_license<S: Into<String>>(&mut self, license: S) {
+        self.about.license = Some(license.into());
+    }
+
+    /// Set the `created_date` dictionary metadata. See also [`DictionaryInfo`].
+    pub fn set_created_date<S: Into<String>>(&mut self, date: S) {
+        self.about.created_date = Some(date.into());
+    }
+
+    /// Sets the `version` dictionary metadata. See also [`DictionaryInfo`].
+    pub fn set_version<S: Into<String>>(&mut self, version: S) {
+        self.about.version = Some(version.into());
+    }
+
+    /// Sets the `software` dictionary metadata. See also [`DictionaryInfo`].
+    pub fn set_software<S: Into<String>>(&mut self, software: S) {
+        self.about.software = Some(software.into())
     }
 
     /// Inserts a new entry to the dictionary.
@@ -648,12 +741,54 @@ impl TrieDictionaryBuilder {
             RIFF_ID.clone(),
             CHEW,
             vec![
+                ChunkContents::Children(LIST, INFO, self.info_chunks()?),
                 ChunkContents::Data(DICT, dict_buf),
                 ChunkContents::Data(DATA, data_buf),
             ],
         );
 
         contents.write(writer)
+    }
+
+    fn info_chunks(&self) -> Result<Vec<ChunkContents>, io::Error> {
+        let mut info_chunks = vec![];
+        if let Some(name) = &self.about.name {
+            info_chunks.push(ChunkContents::Data(
+                INAM,
+                CString::new(name.as_bytes())?.into_bytes(),
+            ))
+        }
+        if let Some(copyright) = &self.about.copyright {
+            info_chunks.push(ChunkContents::Data(
+                ICOP,
+                CString::new(copyright.as_bytes())?.into_bytes(),
+            ))
+        }
+        if let Some(license) = &self.about.license {
+            info_chunks.push(ChunkContents::Data(
+                ILIC,
+                CString::new(license.as_bytes())?.into_bytes(),
+            ))
+        }
+        if let Some(created_date) = &self.about.created_date {
+            info_chunks.push(ChunkContents::Data(
+                ICRD,
+                CString::new(created_date.as_bytes())?.into_bytes(),
+            ))
+        }
+        if let Some(version) = &self.about.version {
+            info_chunks.push(ChunkContents::Data(
+                IREV,
+                CString::new(version.as_bytes())?.into_bytes(),
+            ))
+        }
+        if let Some(software) = &self.about.software {
+            info_chunks.push(ChunkContents::Data(
+                ISFT,
+                CString::new(software.as_bytes())?.into_bytes(),
+            ))
+        }
+        Ok(info_chunks)
     }
 
     /// Calculates the statistics of the dictionary.
@@ -695,7 +830,7 @@ impl TrieDictionaryBuilder {
     /// assert_eq!(2, stats.avg_height);
     /// assert_eq!(4, stats.root_branch_count);
     /// assert_eq!(2, stats.max_branch_count);
-    /// assert_eq!(1, stats.avg_branch_count);
+    /// assert_eq!(0, stats.avg_branch_count);
     /// ```
     pub fn statistics(&self) -> TrieDictionaryStatistics {
         let mut node_count = 0;
@@ -730,11 +865,16 @@ impl TrieDictionaryBuilder {
                         internal_leaf_count += 1;
                         branch_heights.push(max_height);
                     }
-                    branch_counts.push(node.children.len());
-                    if node.children.len() > max_branch_count && id != ROOT_ID {
+                    let branch_count = node
+                        .children
+                        .iter()
+                        .filter(|&&child_id| self.arena[child_id].syllable.is_some())
+                        .count();
+                    branch_counts.push(branch_count);
+                    if branch_count > max_branch_count && id != ROOT_ID {
                         max_branch_count = node.children.len();
                     }
-                    if node.children.len() > root_branch_count {
+                    if branch_count > root_branch_count {
                         root_branch_count = node.children.len();
                     }
                 } else {
@@ -959,5 +1099,29 @@ mod tests {
                 2,
             )
             .expect("Duplicate phrase error");
+    }
+
+    #[test]
+    fn tree_builder_write_read_metadata() {
+        let mut builder = TrieDictionaryBuilder::new();
+        builder.set_name("name");
+        builder.set_copyright("copyright");
+        builder.set_license("license");
+        builder.set_created_date("created_date");
+        builder.set_version("version");
+        builder.set_software("software");
+
+        let mut cursor = Cursor::new(vec![]);
+        builder.write(&mut cursor).unwrap();
+
+        let dict = TrieDictionary::new(&mut cursor).unwrap();
+        let info = dict.about();
+
+        assert_eq!("name", info.name.unwrap());
+        assert_eq!("copyright", info.copyright.unwrap());
+        assert_eq!("license", info.license.unwrap());
+        assert_eq!("created_date", info.created_date.unwrap());
+        assert_eq!("version", info.version.unwrap());
+        assert_eq!("software", info.software.unwrap());
     }
 }

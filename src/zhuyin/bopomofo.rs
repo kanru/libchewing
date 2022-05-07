@@ -1,3 +1,5 @@
+use std::fmt::{Display, Write};
+
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -160,6 +162,61 @@ impl Bopomofo {
 pub enum BopomofoParseError {
     #[error("unknown bopomofo symbol")]
     Unknown,
+}
+
+impl Display for Bopomofo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_char((*self).into())
+    }
+}
+
+impl From<Bopomofo> for char {
+    fn from(bopomofo: Bopomofo) -> Self {
+        match bopomofo {
+            Bopomofo::B => 'ㄅ',
+            Bopomofo::P => 'ㄆ',
+            Bopomofo::M => 'ㄇ',
+            Bopomofo::F => 'ㄈ',
+            Bopomofo::D => 'ㄉ',
+            Bopomofo::T => 'ㄊ',
+            Bopomofo::N => 'ㄋ',
+            Bopomofo::L => 'ㄌ',
+            Bopomofo::G => 'ㄍ',
+            Bopomofo::K => 'ㄎ',
+            Bopomofo::H => 'ㄏ',
+            Bopomofo::J => 'ㄐ',
+            Bopomofo::Q => 'ㄑ',
+            Bopomofo::X => 'ㄒ',
+            Bopomofo::ZH => 'ㄓ',
+            Bopomofo::CH => 'ㄔ',
+            Bopomofo::SH => 'ㄕ',
+            Bopomofo::R => 'ㄖ',
+            Bopomofo::Z => 'ㄗ',
+            Bopomofo::C => 'ㄘ',
+            Bopomofo::S => 'ㄙ',
+            Bopomofo::A => 'ㄚ',
+            Bopomofo::O => 'ㄛ',
+            Bopomofo::E => 'ㄜ',
+            Bopomofo::EH => 'ㄝ',
+            Bopomofo::AI => 'ㄞ',
+            Bopomofo::EI => 'ㄟ',
+            Bopomofo::AU => 'ㄠ',
+            Bopomofo::OU => 'ㄡ',
+            Bopomofo::AN => 'ㄢ',
+            Bopomofo::EN => 'ㄣ',
+            Bopomofo::ANG => 'ㄤ',
+            Bopomofo::ENG => 'ㄥ',
+            Bopomofo::ER => 'ㄦ',
+            Bopomofo::I => 'ㄧ',
+            Bopomofo::U => 'ㄨ',
+            Bopomofo::IU => 'ㄩ',
+            Bopomofo::TONE1 => 'ˉ',
+            Bopomofo::TONE5 => '˙',
+            Bopomofo::TONE2 => 'ˊ',
+            Bopomofo::TONE3 => 'ˇ',
+            Bopomofo::TONE4 => 'ˋ',
+        }
+    }
 }
 
 impl TryFrom<char> for Bopomofo {

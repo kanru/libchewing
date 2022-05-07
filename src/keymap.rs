@@ -101,11 +101,11 @@ const QWERTY_INDEX: [u8; 48] = [
       b'z', b'x', b'c', b'v', b'b', b'n', b'm', b',', b'.', b'/', b' '
 ];
 
-pub trait KeyIndexFromQwerty {
+pub trait KeyCodeFromQwerty {
     fn as_key_code(&self) -> Option<KeyCode>;
 }
 
-impl KeyIndexFromQwerty for u8 {
+impl KeyCodeFromQwerty for u8 {
     fn as_key_code(&self) -> Option<KeyCode> {
         let position = QWERTY_INDEX.iter().position(|key| key == self);
         position.map(|pos| QWERTY.map[pos])

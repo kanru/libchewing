@@ -1,3 +1,5 @@
+use std::fmt::{Display, Write};
+
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -91,6 +93,17 @@ impl Syllable {
 impl Default for Syllable {
     fn default() -> Self {
         Syllable::new()
+    }
+}
+
+impl Display for Syllable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for &bopomofo in [&self.initial, &self.medial, &self.rime, &self.tone] {
+            if let Some(bopomofo) = bopomofo {
+                f.write_char(bopomofo.into())?;
+            }
+        }
+        Ok(())
     }
 }
 

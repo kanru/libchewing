@@ -10,7 +10,7 @@ use riff::{Chunk, ChunkContents, ChunkId, RIFF_ID};
 
 use crate::zhuyin::Syllable;
 
-use super::{Dictionary, DictionaryInfo, DictionaryMut, DuplicatePhraseError, Phrases};
+use super::{Dictionary, DictionaryInfo, DictionaryMut, DuplicatePhraseError, Phrase, Phrases};
 
 const CHEW: ChunkId = ChunkId { value: *b"CHEW" };
 const DICT: ChunkId = ChunkId { value: *b"DICT" };
@@ -77,7 +77,7 @@ define_layout!(trie_leaf, LittleEndian, {
 ///     syl![Bopomofo::Z, Bopomofo::TONE4],
 ///     syl![Bopomofo::D, Bopomofo::I, Bopomofo::AN]
 /// ]);
-/// assert_eq!("字典".to_string(), phrases.next().unwrap().0);
+/// assert_eq!("字典", phrases.next().unwrap().as_str());
 /// # Ok(())
 /// # }
 /// ```
@@ -199,7 +199,7 @@ fn trie_leaf_iter(dict: &TrieDictionary, begin: usize, end: usize) -> Phrases {
                 let len = dict.data[pos] as usize;
                 let start = pos + 1;
                 let end = start + len;
-                (
+                Phrase::new(
                     String::from_utf8(dict.data[start..end].to_vec()).expect("invalid data"),
                     leaf.frequency().read(),
                 )
@@ -906,7 +906,7 @@ mod tests {
     use std::io::Cursor;
 
     use crate::{
-        dictionary::{trie::TrieBuilderNode, Dictionary},
+        dictionary::{trie::TrieBuilderNode, Dictionary, Phrase},
         syl,
         zhuyin::Bopomofo,
     };
@@ -1000,7 +1000,7 @@ mod tests {
 
         let dict = TrieDictionary::new(&mut cursor)?;
         assert_eq!(
-            vec![("測".to_string(), 1), ("冊".to_string(), 1)],
+            vec![Phrase::new("測", 1), Phrase::new("冊", 1)],
             dict.lookup_word(syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4])
                 .collect::<Vec<_>>()
         );
@@ -1042,7 +1042,7 @@ mod tests {
 
         let dict = TrieDictionary::new(&mut cursor)?;
         assert_eq!(
-            vec![("測試".to_string(), 1), ("策試".to_string(), 2)],
+            vec![Phrase::new("測試", 1), Phrase::new("策試", 2)],
             dict.lookup_phrase(&[
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4]
@@ -1050,7 +1050,7 @@ mod tests {
             .collect::<Vec<_>>()
         );
         assert_eq!(
-            vec![("測試成功".to_string(), 3)],
+            vec![Phrase::new("測試成功", 3)],
             dict.lookup_phrase(&[
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
@@ -1060,7 +1060,7 @@ mod tests {
             .collect::<Vec<_>>()
         );
         assert_eq!(
-            Vec::<(String, u32)>::new(),
+            Vec::<Phrase>::new(),
             dict.lookup_phrase(&[
                 syl![Bopomofo::C, Bopomofo::U, Bopomofo::O, Bopomofo::TONE4],
                 syl![Bopomofo::U, Bopomofo::TONE4]

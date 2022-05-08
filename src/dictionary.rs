@@ -1,6 +1,10 @@
 //! Dictionaries for looking up phrases.
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+    fmt::Display,
+};
 
 use miette::Diagnostic;
 use thiserror::Error;
@@ -71,6 +75,124 @@ pub struct DictionaryInfo {
     pub software: Option<String>,
 }
 
+/// A type containing a phrase string and its frequency.
+///
+/// # Examples
+///
+/// A `Phrase` can be created from/to a tuple.
+///
+/// ```
+/// use chewing::dictionary::Phrase;
+///
+/// let phrase = Phrase::new("測", 1);
+/// assert_eq!(phrase, ("測", 1).into());
+/// assert_eq!(("測".to_string(), 1u32), phrase.into());
+/// ```
+///
+/// Phrases are ordered by their frequency.
+///
+/// ```
+/// use chewing::dictionary::Phrase;
+///
+/// assert!(Phrase::new("測", 100) > Phrase::new("冊", 1));
+/// ```
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Phrase {
+    phrase: String,
+    freq: u32,
+}
+
+impl Phrase {
+    /// Creates a new `Phrase`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chewing::dictionary::Phrase;
+    ///
+    /// let phrase = Phrase::new("新", 1);
+    /// ```
+    pub fn new<S: Into<String>>(phrase: S, freq: u32) -> Phrase {
+        Phrase {
+            phrase: phrase.into(),
+            freq,
+        }
+    }
+    /// Returns the frequency of the phrase.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chewing::dictionary::Phrase;
+    ///
+    /// let phrase = Phrase::new("詞頻", 100);
+    ///
+    /// assert_eq!(100, phrase.freq());
+    /// ```
+    pub fn freq(&self) -> u32 {
+        self.freq
+    }
+    /// Returns the inner str of the phrase.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chewing::dictionary::Phrase;
+    ///
+    /// let phrase = Phrase::new("詞", 100);
+    ///
+    /// assert_eq!("詞", phrase.as_str());
+    /// ```
+    pub fn as_str(&self) -> &str {
+        self.phrase.as_str()
+    }
+}
+
+/// Phrases are compared by their frequency first, followed by their phrase
+/// string.
+impl PartialOrd for Phrase {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self.freq.partial_cmp(&other.freq) {
+            Some(Ordering::Equal) => {}
+            ord => return ord,
+        }
+        self.phrase.partial_cmp(&other.phrase)
+    }
+}
+
+impl AsRef<str> for Phrase {
+    fn as_ref(&self) -> &str {
+        self.phrase.as_str()
+    }
+}
+
+impl From<Phrase> for String {
+    fn from(phrase: Phrase) -> Self {
+        phrase.phrase
+    }
+}
+
+impl From<Phrase> for (String, u32) {
+    fn from(phrase: Phrase) -> Self {
+        (phrase.phrase, phrase.freq)
+    }
+}
+
+impl<S> From<(S, u32)> for Phrase
+where
+    S: Into<String>,
+{
+    fn from(tuple: (S, u32)) -> Self {
+        Phrase::new(tuple.0, tuple.1)
+    }
+}
+
+impl Display for Phrase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.phrase.as_str())
+    }
+}
+
 /// A generic iterator over the phrases and their frequency in a dictionary.
 ///
 /// # Examples
@@ -81,17 +203,17 @@ pub struct DictionaryInfo {
 /// use chewing::{dictionary::Dictionary, syl, zhuyin::Bopomofo};
 ///
 /// let dict = HashMap::from([
-///     (vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], vec![("測".to_string(), 100)]),
+///     (vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], vec![("測", 100).into()]),
 /// ]);
 ///
-/// for (phrase, freq) in dict.lookup_word(
+/// for phrase in dict.lookup_word(
 ///     syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]
 /// ) {
-///     assert_eq!("測", phrase);
-///     assert_eq!(100, freq);
+///     assert_eq!("測", phrase.as_str());
+///     assert_eq!(100, phrase.freq());
 /// }
 /// ```
-pub type Phrases<'a> = Box<dyn Iterator<Item = (String, u32)> + 'a>;
+pub type Phrases<'a> = Box<dyn Iterator<Item = Phrase> + 'a>;
 
 /// An interface for looking up dictionaries.
 ///
@@ -112,13 +234,13 @@ pub type Phrases<'a> = Box<dyn Iterator<Item = (String, u32)> + 'a>;
 ///
 /// let mut dict = HashMap::new();
 /// let dict_mut = dict.as_dict_mut().unwrap();
-/// dict_mut.insert(&[syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], "測", 100)?;
+/// dict_mut.insert(&[syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], ("測", 100).into())?;
 ///
-/// for (phrase, freq) in dict.lookup_word(
+/// for phrase in dict.lookup_word(
 ///     syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]
 /// ) {
-///     assert_eq!("測", phrase);
-///     assert_eq!(100, freq);
+///     assert_eq!("測", phrase.as_str());
+///     assert_eq!(100, phrase.freq());
 /// }
 /// # Ok(())
 /// # }
@@ -157,7 +279,7 @@ pub trait Dictionary {
 ///
 /// let mut dict = HashMap::new();
 /// let dict_mut = dict.as_dict_mut().unwrap();
-/// dict_mut.insert(&[syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], "測", 100)?;
+/// dict_mut.insert(&[syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], ("測", 100).into())?;
 /// # Ok(())
 /// # }
 /// ```
@@ -165,12 +287,11 @@ pub trait DictionaryMut {
     fn insert(
         &mut self,
         syllables: &[Syllable],
-        phrase: &str,
-        frequency: u32,
+        phrase: Phrase,
     ) -> Result<(), DictionaryUpdateError>;
 }
 
-impl Dictionary for HashMap<Vec<Syllable>, Vec<(String, u32)>> {
+impl Dictionary for HashMap<Vec<Syllable>, Vec<Phrase>> {
     fn lookup_phrase(&self, syllables: &[Syllable]) -> Phrases {
         self.get(syllables)
             .cloned()
@@ -187,20 +308,19 @@ impl Dictionary for HashMap<Vec<Syllable>, Vec<(String, u32)>> {
     }
 }
 
-impl DictionaryMut for HashMap<Vec<Syllable>, Vec<(String, u32)>> {
+impl DictionaryMut for HashMap<Vec<Syllable>, Vec<Phrase>> {
     fn insert(
         &mut self,
         syllables: &[Syllable],
-        phrase: &str,
-        frequency: u32,
+        phrase: Phrase,
     ) -> Result<(), DictionaryUpdateError> {
         let vec = self.entry(syllables.to_vec()).or_default();
-        if vec.iter().any(|it| it.0 == phrase) {
+        if vec.iter().any(|it| it.as_str() == phrase.as_str()) {
             return Err(DictionaryUpdateError {
                 source: Box::new(DuplicatePhraseError),
             });
         }
-        vec.push((phrase.to_owned(), frequency));
+        vec.push(phrase);
         Ok(())
     }
 }
@@ -230,11 +350,11 @@ impl BlockList for HashSet<String> {
 /// let mut user_dict = Box::new(HashMap::new());
 /// sys_dict.insert(
 ///     vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]],
-///     vec![("測".to_string(), 1), ("冊".to_string(), 1), ("側".to_string(), 1)]
+///     vec![("測", 1).into(), ("冊", 1).into(), ("側", 1).into()]
 /// );
 /// user_dict.insert(
 ///     vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]],
-///     vec![("策".to_string(), 100), ("冊".to_string(), 100)]
+///     vec![("策", 100).into(), ("冊", 100).into()]
 /// );
 ///
 /// let user_block_list = Box::new(HashSet::from(["側".to_string()]));
@@ -242,9 +362,9 @@ impl BlockList for HashSet<String> {
 /// let dict = ChainedDictionary::new(vec![sys_dict, user_dict], vec![user_block_list]);
 /// assert_eq!(
 ///     [
-///         ("策".to_string(), 100),
-///         ("冊".to_string(), 100),
-///         ("測".to_string(), 1),
+///         ("策", 100).into(),
+///         ("冊", 100).into(),
+///         ("測", 1).into(),
 ///     ]
 ///     .into_iter()
 ///     .collect::<HashSet<_>>(),
@@ -284,6 +404,7 @@ impl Dictionary for ChainedDictionary {
             .iter()
             .map(|dict| {
                 dict.lookup_phrase(syllables)
+                    .map(|phrase| phrase.into())
                     .collect::<HashMap<String, u32>>()
             })
             .reduce(|mut accum, second| {
@@ -295,7 +416,13 @@ impl Dictionary for ChainedDictionary {
             })
             .map_or_else(
                 || Box::new(std::iter::empty()) as Phrases,
-                |h| Box::new(h.into_iter().filter(|(phrase, _)| !self.is_blocked(phrase))),
+                |h| {
+                    Box::new(
+                        h.into_iter()
+                            .filter(|(phrase, _)| !self.is_blocked(phrase))
+                            .map(|v| v.into()),
+                    )
+                },
             )
     }
 
@@ -315,12 +442,11 @@ impl DictionaryMut for ChainedDictionary {
     fn insert(
         &mut self,
         syllables: &[Syllable],
-        phrase: &str,
-        frequency: u32,
+        phrase: Phrase,
     ) -> Result<(), DictionaryUpdateError> {
         for dict in &mut self.inner {
             if let Some(dict_mut) = dict.as_dict_mut() {
-                dict_mut.insert(syllables, phrase, frequency)?;
+                dict_mut.insert(syllables, phrase.clone())?;
             }
         }
         Ok(())

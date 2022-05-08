@@ -130,38 +130,52 @@ impl Bopomofo {
             TONE1 | TONE2 | TONE3 | TONE4 | TONE5 => BopomofoKind::Tone,
         }
     }
-    pub fn from_initial(index: i32) -> Bopomofo {
-        INITIAL_MAP[(index - 1) as usize]
+    pub fn from_initial(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
+        if index < 1 || (index - 1) as usize >= INITIAL_MAP.len() {
+            return Err(ParseBopomofoError::IndexOutOfRange);
+        }
+        Ok(INITIAL_MAP[(index - 1) as usize])
     }
-    pub fn from_medial(index: i32) -> Bopomofo {
-        MEDIAL_MAP[(index - 1) as usize]
+    pub fn from_medial(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
+        if index < 1 || (index - 1) as usize >= MEDIAL_MAP.len() {
+            return Err(ParseBopomofoError::IndexOutOfRange);
+        }
+        Ok(MEDIAL_MAP[(index - 1) as usize])
     }
-    pub fn from_rime(index: i32) -> Bopomofo {
-        RIME_MAP[(index - 1) as usize]
+    pub fn from_rime(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
+        if index < 1 || (index - 1) as usize >= RIME_MAP.len() {
+            return Err(ParseBopomofoError::IndexOutOfRange);
+        }
+        Ok(RIME_MAP[(index - 1) as usize])
     }
-    pub fn from_tone(index: i32) -> Bopomofo {
-        TONE_MAP[(index - 1) as usize]
+    pub fn from_tone(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
+        if index < 1 || (index - 1) as usize >= TONE_MAP.len() {
+            return Err(ParseBopomofoError::IndexOutOfRange);
+        }
+        Ok(TONE_MAP[(index - 1) as usize])
     }
 
-    pub fn initial_index(&self) -> i32 {
-        (INITIAL_MAP.iter().position(|b| b == self).unwrap() + 1) as i32
+    pub fn initial_index(&self) -> u16 {
+        (INITIAL_MAP.iter().position(|b| b == self).unwrap() + 1) as u16
     }
-    pub fn medial_index(&self) -> i32 {
-        (MEDIAL_MAP.iter().position(|b| b == self).unwrap() + 1) as i32
+    pub fn medial_index(&self) -> u16 {
+        (MEDIAL_MAP.iter().position(|b| b == self).unwrap() + 1) as u16
     }
-    pub fn rime_index(&self) -> i32 {
-        (RIME_MAP.iter().position(|b| b == self).unwrap() + 1) as i32
+    pub fn rime_index(&self) -> u16 {
+        (RIME_MAP.iter().position(|b| b == self).unwrap() + 1) as u16
     }
-    pub fn tone_index(&self) -> i32 {
-        (TONE_MAP.iter().position(|b| b == self).unwrap() + 1) as i32
+    pub fn tone_index(&self) -> u16 {
+        (TONE_MAP.iter().position(|b| b == self).unwrap() + 1) as u16
     }
 }
 
 #[derive(Error, Diagnostic, Debug)]
 #[diagnostic(code(chewing::bopomofo_parse_error))]
-pub enum BopomofoParseError {
+pub enum ParseBopomofoError {
     #[error("unknown bopomofo symbol")]
     Unknown,
+    #[error("index out of range")]
+    IndexOutOfRange,
 }
 
 impl Display for Bopomofo {
@@ -220,7 +234,7 @@ impl From<Bopomofo> for char {
 }
 
 impl TryFrom<char> for Bopomofo {
-    type Error = BopomofoParseError;
+    type Error = ParseBopomofoError;
 
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
@@ -266,7 +280,7 @@ impl TryFrom<char> for Bopomofo {
             'ˊ' => Ok(Bopomofo::TONE2),
             'ˇ' => Ok(Bopomofo::TONE3),
             'ˋ' => Ok(Bopomofo::TONE4),
-            _ => Err(BopomofoParseError::Unknown),
+            _ => Err(ParseBopomofoError::Unknown),
         }
     }
 }

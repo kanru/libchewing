@@ -290,6 +290,10 @@ typedef struct ChewingData {
     ChewingStaticData static_data;
     void (*logger) (void *data, int level, const char *fmt, ...);
     void *loggerData;
+
+#if HAVE_RUST
+    void *dict;
+#endif
 } ChewingData;
 
 /**

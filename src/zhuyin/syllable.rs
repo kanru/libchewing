@@ -49,7 +49,18 @@ impl Syllable {
     pub fn has_tone(&self) -> bool {
         self.tone.is_some()
     }
-    pub fn as_u16(&self) -> u16 {
+    /// Returns the `Syllable` encoded in a u16 integer.
+    ///
+    /// The data layout used:
+    ///
+    /// ```text
+    ///  0                   1
+    ///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// |   Initial   | M | Rime  |Tone |
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// ```
+    pub fn to_u16(&self) -> u16 {
         assert!(
             !self.is_empty(),
             "empty syllable cannot be converted to u16"
@@ -60,9 +71,6 @@ impl Syllable {
         let tone = self.tone.map_or(0, |v| v as u16 - 36).clamp(0, 4);
 
         (initial << 9) | (medial << 7) | (rime << 3) | tone
-    }
-    pub fn from_u16(_syllable: u16) -> Result<Syllable, SyllableDecodeError> {
-        todo!()
     }
     pub fn update(&mut self, bopomofo: Bopomofo) {
         match bopomofo.kind() {
@@ -93,6 +101,70 @@ impl Syllable {
 impl Default for Syllable {
     fn default() -> Self {
         Syllable::new()
+    }
+}
+
+impl From<Syllable> for u16 {
+    fn from(syl: Syllable) -> Self {
+        syl.to_u16()
+    }
+}
+
+impl TryFrom<u16> for Syllable {
+    type Error = DecodeSyllableError;
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        let initial = value >> 9;
+        let medial = (value & 0b00000000_11_0000_000) >> 7;
+        let rime = (value & 0b00000000_00_1111_000) >> 3;
+        let tone = value & 0b00000000_00_0000_111;
+        let initial = if initial == 0 {
+            None
+        } else {
+            Some(
+                Bopomofo::from_initial(initial).map_err(|err| DecodeSyllableError {
+                    msg: "Unable to decode syllable".to_string(),
+                    source: Box::new(err),
+                })?,
+            )
+        };
+        let medial = if medial == 0 {
+            None
+        } else {
+            Some(
+                Bopomofo::from_medial(medial).map_err(|err| DecodeSyllableError {
+                    msg: "Unable to decode syllable".to_string(),
+                    source: Box::new(err),
+                })?,
+            )
+        };
+        let rime = if rime == 0 {
+            None
+        } else {
+            Some(
+                Bopomofo::from_rime(rime).map_err(|err| DecodeSyllableError {
+                    msg: "Unable to decode syllable".to_string(),
+                    source: Box::new(err),
+                })?,
+            )
+        };
+        let tone = if tone == 0 {
+            None
+        } else {
+            Some(
+                Bopomofo::from_tone(tone).map_err(|err| DecodeSyllableError {
+                    msg: "Unable to decode syllable".to_string(),
+                    source: Box::new(err),
+                })?,
+            )
+        };
+
+        Ok(Syllable {
+            initial,
+            medial,
+            rime,
+            tone,
+        })
     }
 }
 
@@ -148,8 +220,9 @@ impl SyllableBuilder {
 #[derive(Error, Diagnostic, Debug)]
 #[error("syllable decode error: {msg}")]
 #[diagnostic(code(chewing::syllable_decode_error))]
-pub struct SyllableDecodeError {
+pub struct DecodeSyllableError {
     msg: String,
+    source: Box<dyn std::error::Error>,
 }
 
 #[macro_export]
@@ -172,19 +245,25 @@ mod test {
     #[test]
     fn syllable_hsu_sdf_as_u16() {
         let syl = Syllable::builder().insert(Bopomofo::S).build();
-        assert_eq!(0x2A00, syl.as_u16());
+        assert_eq!(0x2A00, syl.to_u16());
 
         let syl = Syllable::builder().insert(Bopomofo::D).build();
-        assert_eq!(0xA00, syl.as_u16());
+        assert_eq!(0xA00, syl.to_u16());
 
         let syl = Syllable::builder().insert(Bopomofo::F).build();
-        assert_eq!(0x800, syl.as_u16());
+        assert_eq!(0x800, syl.to_u16());
     }
 
     #[test]
     #[should_panic]
     fn empty_syllable_as_u16() {
-        Syllable::builder().build().as_u16();
+        Syllable::builder().build().to_u16();
+    }
+
+    #[test]
+    fn syllable_as_u16_roundtrip() {
+        let syl = Syllable::builder().insert(Bopomofo::S).build();
+        assert_eq!(syl, syl.to_u16().try_into().unwrap());
     }
 
     #[test]

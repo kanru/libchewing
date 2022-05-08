@@ -16,16 +16,20 @@
 #include "chewing-private.h"
 
 #ifndef SEEK_SET
-#    define SEEK_SET 0
+#define SEEK_SET 0
 #endif
+
+#ifndef HAVE_RUST
 
 #define PHONE_PHRASE_NUM (162244)
 
 int GetCharFirst(ChewingData *, Phrase *, uint16_t);
-int GetPhraseFirst(ChewingData *pgdata, Phrase *phr_ptr, const TreeType *phrase_parent);
-int GetVocabNext(ChewingData *pgdata, Phrase *phr_ptr);
 int InitDict(ChewingData *pgdata, const char *prefix);
 void TerminateDict(ChewingData *pgdata);
+int GetPhraseFirst(ChewingData *pgdata, Phrase *phr_ptr, const TreeType *phrase_parent);
+int GetVocabNext(ChewingData *pgdata, Phrase *phr_ptr);
+
+#endif
 
 /* *INDENT-OFF* */
 #endif

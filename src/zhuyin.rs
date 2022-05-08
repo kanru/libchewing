@@ -1,5 +1,5 @@
 mod bopomofo;
 mod syllable;
 
-pub use bopomofo::{Bopomofo, BopomofoKind, BopomofoParseError};
-pub use syllable::{Syllable, SyllableBuilder, SyllableDecodeError};
+pub use bopomofo::{Bopomofo, BopomofoKind, ParseBopomofoError};
+pub use syllable::{DecodeSyllableError, Syllable, SyllableBuilder};

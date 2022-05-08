@@ -209,7 +209,12 @@ CHEWING_API ChewingContext *chewing_new2(const char *syspath,
         goto error;
     }
 
+#ifdef HAVE_RUST
+    ctx->data->dict = InitDict(path);
+    ret = 0;
+#else
     ret = InitDict(ctx->data, path);
+#endif
     if (ret) {
         LOG_ERROR("InitDict returns %d", ret);
         goto error;
@@ -296,6 +301,9 @@ CHEWING_API int chewing_Reset(ChewingContext *ctx)
     ChewingConfigData old_config;
     void (*logger) (void *data, int level, const char *fmt, ...);
     void *loggerData;
+#ifdef HAVE_RUST
+    void *dict;
+#endif
 
     if (!ctx) {
         return -1;
@@ -309,6 +317,7 @@ CHEWING_API int chewing_Reset(ChewingContext *ctx)
     static_data = pgdata->static_data;
     logger = pgdata->logger;
     loggerData = pgdata->loggerData;
+    dict = pgdata->dict;
 #ifdef HAVE_RUST
     if (pgdata->bopomofoData.editorWithKeymap != 0) {
         FreePhoneticEditor(pgdata->bopomofoData.editorWithKeymap);
@@ -319,6 +328,7 @@ CHEWING_API int chewing_Reset(ChewingContext *ctx)
     pgdata->static_data = static_data;
     pgdata->logger = logger;
     pgdata->loggerData = loggerData;
+    pgdata->dict = dict;
 
 #ifdef HAVE_RUST
     chewing_set_KBType(ctx, KB_DEFAULT);
@@ -417,7 +427,11 @@ CHEWING_API void chewing_delete(ChewingContext *ctx)
             TerminateSymbolTable(ctx->data);
             TerminateUserphrase(ctx->data);
             TerminateTree(ctx->data);
+#ifdef HAVE_RUST
+            TerminateDict(ctx->data->dict);
+#else
             TerminateDict(ctx->data);
+#endif
             free(ctx->data);
         }
 

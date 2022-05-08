@@ -12,7 +12,7 @@
  * of this file.
  */
 #ifdef HAVE_CONFIG_H
-#    include <config.h>
+#include <config.h>
 #endif
 
 #include <stdio.h>
@@ -26,6 +26,8 @@
 #include "memory-private.h"
 #include "tree-private.h"
 #include "private.h"
+
+#ifndef HAVE_RUST
 
 void TerminateDict(ChewingData *pgdata)
 {
@@ -51,12 +53,13 @@ int InitDict(ChewingData *pgdata, const char *prefix)
 
     offset = 0;
     csize = file_size;
-    pgdata->static_data.dict = (const char *) plat_mmap_set_view(&pgdata->static_data.dict_mmap, &offset, &csize);
+    pgdata->static_data.dict = (const char *)plat_mmap_set_view(&pgdata->static_data.dict_mmap, &offset, &csize);
     if (!pgdata->static_data.dict)
         return -1;
 
     return 0;
 }
+
 
 /*
  * The function gets string of vocabulary from dictionary and its frequency from
@@ -69,6 +72,8 @@ static void GetVocabFromDict(ChewingData *pgdata, Phrase *phr_ptr)
     pgdata->static_data.tree_cur_pos++;
 }
 
+#ifndef HAVE_RUST
+
 int GetCharFirst(ChewingData *pgdata, Phrase *wrd_ptr, uint16_t key)
 {
     /* &key serves as an array whose begin and end are both 0. */
@@ -80,6 +85,8 @@ int GetCharFirst(ChewingData *pgdata, Phrase *wrd_ptr, uint16_t key)
     GetVocabFromDict(pgdata, wrd_ptr);
     return 1;
 }
+
+#endif
 
 /*
  * Given an index of parent whose children are phrase leaves (phrase_parent_id),
@@ -97,9 +104,9 @@ int GetPhraseFirst(ChewingData *pgdata, Phrase *phr_ptr, const TreeType *phrase_
 
 int GetVocabNext(ChewingData *pgdata, Phrase *phr_ptr)
 {
-    if (pgdata->static_data.tree_cur_pos >= pgdata->static_data.tree_end_pos
-        || GetUint16(pgdata->static_data.tree_cur_pos->key) != 0)
+    if (pgdata->static_data.tree_cur_pos >= pgdata->static_data.tree_end_pos || GetUint16(pgdata->static_data.tree_cur_pos->key) != 0)
         return 0;
     GetVocabFromDict(pgdata, phr_ptr);
     return 1;
 }
+#endif

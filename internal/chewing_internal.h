@@ -44,6 +44,8 @@ typedef enum KeyboardLayoutCompat {
   Carpalx,
 } KeyboardLayoutCompat;
 
+typedef struct Phrase Phrase;
+
 void *NewPhoneticEditor(enum KeyboardLayoutCompat kb_type);
 
 void FreePhoneticEditor(void *editor_keymap_ptr);
@@ -67,5 +69,17 @@ void PhoneticEditorRemoveAll(void *editor_keymap_ptr);
 int32_t PhoneticEditorKbType(void *editor_keymap_ptr);
 
 bool PhoneticEditorIsEntering(void *editor_keymap_ptr);
+
+void *InitDict(char *prefix);
+
+void TerminateDict(void *dict_ptr);
+
+void *GetCharFirst(void *dict_ptr, struct Phrase *phrase_ptr, uint16_t syllable_u16);
+
+void *GetPhraseFirst(void *vec_ptr, struct Phrase *phrase_ptr);
+
+void *TreeFindPhrase(void *dict_ptr, int begin, int end, uint16_t *syllables_u16);
+
+void *GetVocabNext(void *iter_ptr, struct Phrase *phrase_ptr);
 
 #endif /* chewing_internal_bindings_h */

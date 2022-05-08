@@ -126,7 +126,11 @@ static void SetAvailInfo(ChewingData *pgdata, int begin, int end)
 
     while (head <= head_tmp && tail_tmp <= tail) {
         diff = tail_tmp - head_tmp;
+#ifdef HAVE_RUST
+        tree_pos = TreeFindPhrase(pgdata->dict, head_tmp, tail_tmp, phoneSeq);
+#else
         tree_pos = TreeFindPhrase(pgdata, head_tmp, tail_tmp, phoneSeq);
+#endif
 
         if (tree_pos) {
             /* save it! */
@@ -172,7 +176,12 @@ static void ChoiceInfoAppendChi(ChewingData *pgdata, ChoiceInfo *pci, uint16_t p
     Phrase tempWord;
     int len;
 
+#ifdef HAVE_RUST
+    void *iter = GetCharFirst(pgdata->dict, &tempWord, phone);
+    if (iter) {
+#else
     if (GetCharFirst(pgdata, &tempWord, phone)) {
+#endif
         do {
             len = ueBytesFromChar(tempWord.phrase[0]);
             if (ChoiceTheSame(pci, tempWord.phrase, len))
@@ -182,7 +191,12 @@ static void ChoiceInfoAppendChi(ChewingData *pgdata, ChoiceInfo *pci, uint16_t p
             pci->totalChoiceStr[pci->nTotalChoice]
                 [len] = '\0';
             pci->nTotalChoice++;
+#ifdef HAVE_RUST
+            iter = GetVocabNext(iter, &tempWord);
+        } while (iter);
+#else
         } while (GetVocabNext(pgdata, &tempWord));
+#endif
     }
 }
 
@@ -327,14 +341,23 @@ static void SetChoiceInfo(ChewingData *pgdata)
     /* phrase */
     else {
         if (pai->avail[pai->currentAvail].id) {
+#ifdef HAVE_RUST
+            void *iter = GetPhraseFirst(pai->avail[pai->currentAvail].id, &tempPhrase);
+#else
             GetPhraseFirst(pgdata, &tempPhrase, pai->avail[pai->currentAvail].id);
+#endif
             do {
                 if (ChoiceTheSame(pci, tempPhrase.phrase, len * ueBytesFromChar(tempPhrase.phrase[0]))) {
                     continue;
                 }
                 ueStrNCpy(pci->totalChoiceStr[pci->nTotalChoice], tempPhrase.phrase, len, 1);
                 pci->nTotalChoice++;
+#ifdef HAVE_RUST
+                iter = GetVocabNext(iter, &tempPhrase);
+            } while (iter);
+#else
             } while (GetVocabNext(pgdata, &tempPhrase));
+#endif
         }
 
         memcpy(userPhoneSeq, &phoneSeq[cursor], sizeof(uint16_t) * len);

@@ -96,7 +96,7 @@ pub struct DictionaryInfo {
 ///
 /// assert!(Phrase::new("測", 100) > Phrase::new("冊", 1));
 /// ```
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Ord, Hash, Debug)]
 pub struct Phrase {
     phrase: String,
     freq: u32,
@@ -233,7 +233,7 @@ pub type Phrases<'a> = Box<dyn Iterator<Item = Phrase> + 'a>;
 /// use chewing::{dictionary::Dictionary, syl, zhuyin::Bopomofo};
 ///
 /// let mut dict = HashMap::new();
-/// let dict_mut = dict.as_dict_mut().unwrap();
+/// let dict_mut = dict.as_mut_dict().unwrap();
 /// dict_mut.insert(&[syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], ("測", 100).into())?;
 ///
 /// for phrase in dict.lookup_word(
@@ -258,7 +258,7 @@ pub trait Dictionary {
     fn about(&self) -> DictionaryInfo;
     /// Returns a mutable reference to the dictionary if the underlying
     /// implementation allows update.
-    fn as_dict_mut(&mut self) -> Option<&mut dyn DictionaryMut>;
+    fn as_mut_dict(&mut self) -> Option<&mut dyn DictionaryMut>;
 }
 
 /// An interface for updating dictionaries.
@@ -278,7 +278,7 @@ pub trait Dictionary {
 /// use chewing::{dictionary::Dictionary, syl, zhuyin::Bopomofo};
 ///
 /// let mut dict = HashMap::new();
-/// let dict_mut = dict.as_dict_mut().unwrap();
+/// let dict_mut = dict.as_mut_dict().unwrap();
 /// dict_mut.insert(&[syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]], ("測", 100).into())?;
 /// # Ok(())
 /// # }
@@ -303,7 +303,7 @@ impl Dictionary for HashMap<Vec<Syllable>, Vec<Phrase>> {
         Default::default()
     }
 
-    fn as_dict_mut(&mut self) -> Option<&mut dyn DictionaryMut> {
+    fn as_mut_dict(&mut self) -> Option<&mut dyn DictionaryMut> {
         Some(self)
     }
 }
@@ -433,7 +433,7 @@ impl Dictionary for ChainedDictionary {
         }
     }
 
-    fn as_dict_mut(&mut self) -> Option<&mut dyn DictionaryMut> {
+    fn as_mut_dict(&mut self) -> Option<&mut dyn DictionaryMut> {
         Some(self)
     }
 }
@@ -445,7 +445,7 @@ impl DictionaryMut for ChainedDictionary {
         phrase: Phrase,
     ) -> Result<(), DictionaryUpdateError> {
         for dict in &mut self.inner {
-            if let Some(dict_mut) = dict.as_dict_mut() {
+            if let Some(dict_mut) = dict.as_mut_dict() {
                 dict_mut.insert(syllables, phrase.clone())?;
             }
         }

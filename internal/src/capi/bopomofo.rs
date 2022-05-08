@@ -110,19 +110,19 @@ pub extern "C" fn PhoneticEditorSyllable(editor_keymap_ptr: *mut c_void, pho_inx
     let syllable = editor_keymap.editor.observe();
 
     pho_inx[0] = match syllable.initial {
-        Some(b) => b.initial_index(),
+        Some(b) => b.initial_index() as i32,
         None => 0,
     };
     pho_inx[1] = match syllable.medial {
-        Some(b) => b.medial_index(),
+        Some(b) => b.medial_index() as i32,
         None => 0,
     };
     pho_inx[2] = match syllable.rime {
-        Some(b) => b.rime_index(),
+        Some(b) => b.rime_index() as i32,
         None => 0,
     };
     pho_inx[3] = match syllable.tone {
-        Some(b) => b.tone_index(),
+        Some(b) => b.tone_index() as i32,
         None => 0,
     };
 }
@@ -136,19 +136,19 @@ pub extern "C" fn PhoneticEditorSyllableAlt(editor_keymap_ptr: *mut c_void, pho_
     let syllable = editor_keymap.editor.observe();
 
     pho_inx[0] = match syllable.initial {
-        Some(b) => b.initial_index(),
+        Some(b) => b.initial_index() as i32,
         None => 0,
     };
     pho_inx[1] = match syllable.medial {
-        Some(b) => b.medial_index(),
+        Some(b) => b.medial_index() as i32,
         None => 0,
     };
     pho_inx[2] = match syllable.rime {
-        Some(b) => b.rime_index(),
+        Some(b) => b.rime_index() as i32,
         None => 0,
     };
     pho_inx[3] = match syllable.tone {
-        Some(b) => b.tone_index(),
+        Some(b) => b.tone_index() as i32,
         None => 0,
     };
 }
@@ -170,7 +170,7 @@ pub extern "C" fn PhoneticEditorSyllableIndex(editor_keymap_ptr: *mut c_void) ->
     let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     let syllable = editor_keymap.editor.observe();
-    syllable.as_u16()
+    syllable.to_u16()
 }
 
 #[no_mangle]
@@ -179,7 +179,7 @@ pub extern "C" fn PhoneticEditorSyllableIndexAlt(editor_keymap_ptr: *mut c_void)
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     // FIXME
     let syllable = editor_keymap.editor.observe();
-    syllable.as_u16()
+    syllable.to_u16()
 }
 
 #[no_mangle]

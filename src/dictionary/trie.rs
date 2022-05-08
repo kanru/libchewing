@@ -109,22 +109,22 @@ impl TrieDictionary {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new<T>(stream: &mut T) -> io::Result<TrieDictionary>
+    pub fn new<T>(mut stream: T) -> io::Result<TrieDictionary>
     where
         T: Read + Seek,
     {
-        let root = Chunk::read(stream, 0)?;
+        let root = Chunk::read(&mut stream, 0)?;
         if root.id() != RIFF_ID {
             return Err(io::Error::from(io::ErrorKind::InvalidData));
         }
-        let file_type = root.read_type(stream)?;
+        let file_type = root.read_type(&mut stream)?;
         if file_type != CHEW {
             return Err(io::Error::from(io::ErrorKind::InvalidData));
         }
         let mut dict_chunk = None;
         let mut data_chunk = None;
         let mut info_chunk = None;
-        for chunk in root.iter(stream) {
+        for chunk in root.iter(&mut stream) {
             match chunk.id() {
                 LIST => info_chunk = Some(chunk),
                 DICT => dict_chunk = Some(chunk),
@@ -134,30 +134,30 @@ impl TrieDictionary {
         }
         let mut info = DictionaryInfo::default();
         if let Some(chunk) = info_chunk {
-            info = Self::read_dictionary_info(chunk, stream)?;
+            info = Self::read_dictionary_info(chunk, &mut stream)?;
         }
         let dict = dict_chunk
             .ok_or_else(|| io::Error::new(io::ErrorKind::UnexpectedEof, "expecting DICT chunk"))?
-            .read_contents(stream)?;
+            .read_contents(&mut stream)?;
         let data = data_chunk
             .ok_or_else(|| io::Error::new(io::ErrorKind::UnexpectedEof, "expecting DATA chunk"))?
-            .read_contents(stream)?;
+            .read_contents(&mut stream)?;
         Ok(TrieDictionary { info, dict, data })
     }
 
-    fn read_dictionary_info<T>(list_chunk: Chunk, stream: &mut T) -> io::Result<DictionaryInfo>
+    fn read_dictionary_info<T>(list_chunk: Chunk, mut stream: T) -> io::Result<DictionaryInfo>
     where
         T: Read + Seek,
     {
         let mut info = DictionaryInfo::default();
-        let chunk_type = list_chunk.read_type(stream)?;
+        let chunk_type = list_chunk.read_type(&mut stream)?;
         if chunk_type != INFO {
             return Ok(info);
         }
 
         let mut chunks = vec![];
 
-        for chunk in list_chunk.iter(stream) {
+        for chunk in list_chunk.iter(&mut stream) {
             match chunk.id() {
                 INAM | ICOP | ILIC | ICRD | IREV | ISFT => chunks.push((chunk.id(), chunk)),
                 _ => (),
@@ -167,7 +167,7 @@ impl TrieDictionary {
         for (id, chunk) in chunks {
             let content = match id {
                 INAM | ICOP | ILIC | ICRD | IREV | ISFT => Some(
-                    CString::new(chunk.read_contents(stream)?)?
+                    CString::new(chunk.read_contents(&mut stream)?)?
                         .into_string()
                         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?,
                 ),
@@ -213,12 +213,12 @@ impl Dictionary for TrieDictionary {
         let root = trie_node::View::new(self.dict.as_slice());
         let mut node = root;
         'next: for syl in syllables {
-            debug_assert!(syl.as_u16() != 0);
+            debug_assert!(syl.to_u16() != 0);
             let child_begin = node.child_begin().read() as usize * chunk_size;
             let child_end = node.child_end().read() as usize * chunk_size;
             for storage in self.dict[child_begin..child_end].chunks(chunk_size) {
                 let child = trie_node::View::new(storage);
-                if child.syllable().read() == syl.as_u16() {
+                if child.syllable().read() == syl.to_u16() {
                     node = child;
                     continue 'next;
                 }
@@ -236,7 +236,7 @@ impl Dictionary for TrieDictionary {
         self.info.clone()
     }
 
-    fn as_dict_mut(&mut self) -> Option<&mut dyn DictionaryMut> {
+    fn as_mut_dict(&mut self) -> Option<&mut dyn DictionaryMut> {
         None
     }
 }
@@ -665,7 +665,7 @@ impl TrieDictionaryBuilder {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn write<T>(&self, writer: &mut T) -> io::Result<u64>
+    pub fn write<T>(&self, mut writer: T) -> io::Result<u64>
     where
         T: Write + Seek,
     {
@@ -692,7 +692,7 @@ impl TrieDictionaryBuilder {
                     debug_assert_eq!(Some(10), trie_node::SIZE);
                     let mut record = [0; 10];
                     let mut view = trie_node::View::new(&mut record);
-                    let syllable_u16 = node.syllable.map_or(0, |v| v.as_u16());
+                    let syllable_u16 = node.syllable.map_or(0, |v| v.to_u16());
                     let child_end = child_begin + node.children.len() as u32;
                     view.syllable_mut().write(syllable_u16);
                     view.child_begin_mut().write(child_begin);
@@ -719,8 +719,8 @@ impl TrieDictionaryBuilder {
                 // frequency if they are leaf nodes.
                 let mut children = node.children.clone();
                 children.sort_by(|&a, &b| {
-                    let syllable_u16_a = self.arena[a].syllable.map_or(0, |syl| syl.as_u16());
-                    let syllable_u16_b = self.arena[b].syllable.map_or(0, |syl| syl.as_u16());
+                    let syllable_u16_a = self.arena[a].syllable.map_or(0, |syl| syl.to_u16());
+                    let syllable_u16_b = self.arena[b].syllable.map_or(0, |syl| syl.to_u16());
                     match (syllable_u16_a, syllable_u16_b) {
                         (0, 0) => self.arena[b].frequency.cmp(&self.arena[b].frequency),
                         _ => syllable_u16_a.cmp(&syllable_u16_b),
@@ -743,7 +743,7 @@ impl TrieDictionaryBuilder {
             ],
         );
 
-        contents.write(writer)
+        contents.write(&mut writer)
     }
 
     fn info_chunks(&self) -> Result<Vec<ChunkContents>, io::Error> {

@@ -210,7 +210,11 @@ static int CheckChoose(ChewingData *pgdata,
     *pp_phr = NULL;
 
     /* if there exist one phrase satisfied all selectStr then return 1, else return 0. */
+#ifdef HAVE_RUST
+    void *iter = GetPhraseFirst(phrase_parent, phrase);
+#else
     GetPhraseFirst(pgdata, phrase, phrase_parent);
+#endif
     do {
         for (chno = 0; chno < nSelect; chno++) {
             c = selectInterval[chno];
@@ -233,7 +237,12 @@ static int CheckChoose(ChewingData *pgdata,
             *pp_phr = phrase;
             return 1;
         }
+#ifdef HAVE_RUST
+        iter = GetVocabNext(iter, phrase);
+    } while (iter);
+#else
     } while (GetVocabNext(pgdata, phrase));
+#endif
     free(phrase);
     return 0;
 }
@@ -243,6 +252,7 @@ static int CompTreeType(const void *a, const void *b)
     return GetUint16(((TreeType *) a)->key) - GetUint16(((TreeType *) b)->key);
 }
 
+#ifndef HAVE_RUST
 /** @brief search for the phrases have the same pronunciation.*/
 /* if phoneSeq[begin] ~ phoneSeq[end] is a phrase, then add an interval
  * from (begin) to (end+1)
@@ -272,6 +282,7 @@ const TreeType *TreeFindPhrase(ChewingData *pgdata, int begin, int end, const ui
         return NULL;
     return tree_p;
 }
+#endif
 
 /**
  * @brief get child range of a given parent node.
@@ -327,6 +338,9 @@ static void FindInterval(ChewingData *pgdata, TreeDataType *ptd)
     UsedPhraseMode i_used_phrase;
     uint16_t new_phoneSeq[MAX_PHONE_SEQ_LEN];
     UserPhraseData *userphrase;
+#ifdef HAVE_RUST
+    void *dict_ptr = pgdata->dict;
+#endif
 
     for (begin = 0; begin < pgdata->nPhoneSeq; begin++) {
         for (end = begin; end < min(pgdata->nPhoneSeq, begin + MAX_PHRASE_LEN); end++) {
@@ -348,7 +362,11 @@ static void FindInterval(ChewingData *pgdata, TreeDataType *ptd)
             }
 
             /* check dict phrase */
+#ifdef HAVE_RUST
+            phrase_parent = TreeFindPhrase(dict_ptr, begin, end, pgdata->phoneSeq);
+#else
             phrase_parent = TreeFindPhrase(pgdata, begin, end, pgdata->phoneSeq);
+#endif
             if (phrase_parent &&
                 CheckChoose(pgdata,
                             phrase_parent, begin, end + 1,

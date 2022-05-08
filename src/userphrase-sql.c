@@ -66,6 +66,21 @@ static int LoadOriginalFreq(ChewingData *pgdata, const uint16_t phoneSeq[], cons
     int retval;
     Phrase *phrase = ALC(Phrase, 1);
 
+#ifdef HAVE_RUST
+    tree_pos = TreeFindPhrase(pgdata->dict, 0, len - 1, phoneSeq);
+    if (tree_pos) {
+        void *iter = GetPhraseFirst(tree_pos, phrase);
+        do {
+            /* find the same phrase */
+            if (!strcmp(phrase->phrase, wordSeq)) {
+                retval = phrase->freq;
+                free(phrase);
+                return retval;
+            }
+            iter = GetVocabNext(iter, phrase);
+        } while (iter);
+    }
+#else
     tree_pos = TreeFindPhrase(pgdata, 0, len - 1, phoneSeq);
     if (tree_pos) {
         GetPhraseFirst(pgdata, phrase, tree_pos);
@@ -78,6 +93,7 @@ static int LoadOriginalFreq(ChewingData *pgdata, const uint16_t phoneSeq[], cons
             }
         } while (GetVocabNext(pgdata, phrase));
     }
+#endif
 
     free(phrase);
     return FREQ_INIT_VALUE;
@@ -92,6 +108,17 @@ static int LoadMaxFreq(ChewingData *pgdata, const uint16_t phoneSeq[], int len)
     int max_userphrase_freq;
     int ret;
 
+#ifdef HAVE_RUST
+    tree_pos = TreeFindPhrase(pgdata->dict, 0, len - 1, phoneSeq);
+    if (tree_pos) {
+        void *iter = GetPhraseFirst(tree_pos, phrase);
+        do {
+            if (phrase->freq > maxFreq)
+                maxFreq = phrase->freq;
+            iter = GetVocabNext(iter, phrase);
+        } while (iter);
+    }
+#else
     tree_pos = TreeFindPhrase(pgdata, 0, len - 1, phoneSeq);
     if (tree_pos) {
         GetPhraseFirst(pgdata, phrase, tree_pos);
@@ -100,6 +127,7 @@ static int LoadMaxFreq(ChewingData *pgdata, const uint16_t phoneSeq[], int len)
                 maxFreq = phrase->freq;
         } while (GetVocabNext(pgdata, phrase));
     }
+#endif
     free(phrase);
 
     assert(pgdata->static_data.stmt_userphrase[STMT_USERPHRASE_GET_MAX_FREQ]);

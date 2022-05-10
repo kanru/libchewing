@@ -110,6 +110,7 @@ name = "chewing"
 version = "0.5.1-alpha.1"
 dependencies = [
  "binary-layout",
+ "indexmap",
  "miette",
  "riff",
  "thiserror",

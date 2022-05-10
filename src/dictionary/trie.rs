@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::VecDeque,
     ffi::CString,
     fmt::Debug,
@@ -715,15 +716,31 @@ impl TrieDictionaryBuilder {
 
                 child_begin += node.children.len() as u32;
 
-                // Sort the children nodes by their syllables, and sort by
-                // frequency if they are leaf nodes.
+                // Sort the children nodes by their syllables
+                //
+                // NB: this must use a stable sorting algorithm so that lookup
+                // results are stable according to the input file.
                 let mut children = node.children.clone();
                 children.sort_by(|&a, &b| {
-                    let syllable_u16_a = self.arena[a].syllable.map_or(0, |syl| syl.to_u16());
-                    let syllable_u16_b = self.arena[b].syllable.map_or(0, |syl| syl.to_u16());
+                    let a = &self.arena[a];
+                    let b = &self.arena[b];
+                    let syllable_u16_a = a.syllable.map_or(0, |syl| syl.to_u16());
+                    let syllable_u16_b = b.syllable.map_or(0, |syl| syl.to_u16());
                     match (syllable_u16_a, syllable_u16_b) {
-                        (0, 0) => self.arena[b].frequency.cmp(&self.arena[b].frequency),
-                        _ => syllable_u16_a.cmp(&syllable_u16_b),
+                        // Don't sort single word leaves.
+                        // But sort phrases first by the frequency, then by the UTF-8 order.
+                        (0, 0) => match (a.phrase.chars().count(), b.phrase.chars().count()) {
+                            (1, 1) => Ordering::Equal,
+                            (1, _) | (_, 1) => a.phrase.len().cmp(&b.phrase.len()),
+                            _ => {
+                                if a.frequency == b.frequency {
+                                    b.phrase.cmp(&a.phrase)
+                                } else {
+                                    b.frequency.cmp(&a.frequency)
+                                }
+                            }
+                        },
+                        _ => syllable_u16_b.cmp(&syllable_u16_a),
                     }
                 });
                 for child_id in children {
@@ -1042,7 +1059,7 @@ mod tests {
 
         let dict = TrieDictionary::new(&mut cursor)?;
         assert_eq!(
-            vec![Phrase::new("測試", 1), Phrase::new("策試", 2)],
+            vec![Phrase::new("策試", 2), Phrase::new("測試", 1)],
             dict.lookup_phrase(&[
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4]
@@ -1095,6 +1112,97 @@ mod tests {
                 2,
             )
             .expect("Duplicate phrase error");
+    }
+
+    #[test]
+    fn stable_word_sort_order() -> Result<(), Box<dyn std::error::Error>> {
+        let mut builder = TrieDictionaryBuilder::new();
+        for word in ["冊", "策", "測", "側"] {
+            builder.insert(
+                &vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]],
+                word,
+                0,
+            )?;
+        }
+        let mut cursor = Cursor::new(vec![]);
+        builder.write(&mut cursor)?;
+
+        let dict = TrieDictionary::new(&mut cursor)?;
+        assert_eq!(
+            vec![
+                Phrase::new("冊", 0),
+                Phrase::new("策", 0),
+                Phrase::new("測", 0),
+                Phrase::new("側", 0),
+            ],
+            dict.lookup_phrase(&vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],])
+                .collect::<Vec<Phrase>>()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn stable_phrase_sort_order() -> Result<(), Box<dyn std::error::Error>> {
+        let mut builder = TrieDictionaryBuilder::new();
+        builder.insert(
+            &vec![
+                syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+                syl![Bopomofo::SH, Bopomofo::TONE4],
+            ],
+            "側室",
+            318,
+        )?;
+        builder.insert(
+            &vec![
+                syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+                syl![Bopomofo::SH, Bopomofo::TONE4],
+            ],
+            "側視",
+            318,
+        )?;
+        builder.insert(
+            &vec![
+                syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+                syl![Bopomofo::SH, Bopomofo::TONE4],
+            ],
+            "策士",
+            318,
+        )?;
+        builder.insert(
+            &vec![
+                syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+                syl![Bopomofo::SH, Bopomofo::TONE4],
+            ],
+            "策試",
+            318,
+        )?;
+        builder.insert(
+            &vec![
+                syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+                syl![Bopomofo::SH, Bopomofo::TONE4],
+            ],
+            "測試",
+            9318,
+        )?;
+        let mut cursor = Cursor::new(vec![]);
+        builder.write(&mut cursor)?;
+
+        let dict = TrieDictionary::new(&mut cursor)?;
+        assert_eq!(
+            vec![
+                Phrase::new("測試", 9318),
+                Phrase::new("策試", 318),
+                Phrase::new("策士", 318),
+                Phrase::new("側視", 318),
+                Phrase::new("側室", 318),
+            ],
+            dict.lookup_phrase(&vec![
+                syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+                syl![Bopomofo::SH, Bopomofo::TONE4],
+            ])
+            .collect::<Vec<Phrase>>()
+        );
+        Ok(())
     }
 
     #[test]

@@ -6,6 +6,7 @@ use std::{
     fmt::Display,
 };
 
+use indexmap::IndexMap;
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -247,12 +248,13 @@ pub type Phrases<'a> = Box<dyn Iterator<Item = Phrase> + 'a>;
 /// ```
 pub trait Dictionary {
     /// Returns an iterator to all single syllable words matched by the
-    /// syllable, if any. The result does not guarantee any sorting order.
+    /// syllable, if any. The result should use a stable order each time for the
+    /// same input.
     fn lookup_word(&self, syllable: Syllable) -> Phrases {
         self.lookup_phrase(&[syllable])
     }
     /// Returns an iterator to all phrases matched by the syllables, if any. The
-    /// result does not guarantee any sorting order.
+    /// result should use a stable order each time for the same input.
     fn lookup_phrase(&self, syllables: &[Syllable]) -> Phrases;
     /// Returns information about the dictionary instance.
     fn about(&self) -> DictionaryInfo;
@@ -403,9 +405,10 @@ impl Dictionary for ChainedDictionary {
         self.inner
             .iter()
             .map(|dict| {
+                // Use IndexMap so the insertion order is preserved
                 dict.lookup_phrase(syllables)
                     .map(|phrase| phrase.into())
-                    .collect::<HashMap<String, u32>>()
+                    .collect::<IndexMap<String, u32>>()
             })
             .reduce(|mut accum, second| {
                 for (phrase, mut freq) in second.into_iter() {

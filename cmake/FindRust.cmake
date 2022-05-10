@@ -168,20 +168,16 @@ function(add_rust_executable)
     list(JOIN MY_CARGO_ARGS " " MY_CARGO_ARGS_STRING)
 
     # Build the executable.
-    add_custom_command(
-        OUTPUT "${OUTPUT}"
-        COMMAND ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}" ${cargo_EXECUTABLE} ARGS ${MY_CARGO_ARGS}
+    add_custom_target(${ARGS_TARGET}_build
+        BYPRODUCTS "${OUTPUT}"
+        COMMAND ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}" ${cargo_EXECUTABLE} ${MY_CARGO_ARGS}
         WORKING_DIRECTORY "${ARGS_WORKING_DIRECTORY}"
         DEPENDS ${EXE_SOURCES}
         COMMENT "Building ${ARGS_TARGET} in ${ARGS_WORKING_DIRECTORY} with:\n\t ${cargo_EXECUTABLE} ${MY_CARGO_ARGS_STRING}")
 
-    # Create a target from the build output
-    add_custom_target(${ARGS_TARGET}_target
-        DEPENDS ${OUTPUT})
-
     # Create an executable target from custom target
-    # add_custom_target(${ARGS_TARGET} ALL DEPENDS ${ARGS_TARGET}_target)
-    add_executable(${ARGS_TARGET} IMPORTED)
+    add_executable(${ARGS_TARGET} IMPORTED GLOBAL)
+    add_dependencies(${ARGS_TARGET} ${ARGS_TARGET}_build)
 
     # Specify where the executable is
     set_target_properties(${ARGS_TARGET}

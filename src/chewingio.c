@@ -65,11 +65,19 @@ const char *const kb_type_str[] = {
     "KB_CARPALX"
 };
 
+#ifdef HAVE_RUST
+const char *const DICT_FILES[] = {
+    "tsi.dat",
+    "word.dat",
+    NULL,
+};
+#else
 const char *const DICT_FILES[] = {
     DICT_FILE,
     PHONE_TREE_FILE,
     NULL,
 };
+#endif
 
 const char *const SYMBOL_TABLE_FILES[] = {
     SYMBOL_TABLE_FILE,
@@ -214,7 +222,6 @@ CHEWING_API ChewingContext *chewing_new2(const char *syspath,
     ret = 0;
 #else
     ret = InitDict(ctx->data, path);
-#endif
     if (ret) {
         LOG_ERROR("InitDict returns %d", ret);
         goto error;
@@ -225,6 +232,7 @@ CHEWING_API ChewingContext *chewing_new2(const char *syspath,
         LOG_ERROR("InitTree returns %d", ret);
         goto error;
     }
+#endif
 
     if (userpath) {
         userphrase_path = strdup(userpath);
@@ -426,10 +434,10 @@ CHEWING_API void chewing_delete(ChewingContext *ctx)
             TerminateEasySymbolTable(ctx->data);
             TerminateSymbolTable(ctx->data);
             TerminateUserphrase(ctx->data);
-            TerminateTree(ctx->data);
 #ifdef HAVE_RUST
             TerminateDict(ctx->data->dict);
 #else
+            TerminateTree(ctx->data);
             TerminateDict(ctx->data);
 #endif
             free(ctx->data);

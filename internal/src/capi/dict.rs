@@ -1,5 +1,4 @@
 use std::{
-    cmp::Ordering,
     ffi::{c_void, CStr, CString},
     fs::File,
     os::raw::{c_char, c_int},
@@ -26,7 +25,7 @@ pub extern "C" fn InitDict(prefix: *mut c_char) -> *mut c_void {
     let word_db_file = File::open(word_db_path).expect("Unable to open file");
     let word_db = Box::new(TrieDictionary::new(word_db_file).expect("Unable to parse word db"));
 
-    let dict = Box::new(ChainedDictionary::new(vec![tsi_db, word_db], vec![]));
+    let dict = Box::new(ChainedDictionary::new(vec![word_db, tsi_db], vec![]));
 
     Box::into_raw(dict).cast()
 }
@@ -54,11 +53,10 @@ pub extern "C" fn GetCharFirst(
     let syllable = syllable_u16
         .try_into()
         .expect("Unable to convert u16 to syllable");
-    let mut words = dict.lookup_word(syllable).collect::<Vec<_>>();
-    words.sort();
-    let mut iter =
-        Box::new(Box::new(words.into_iter().rev())
-            as Box<dyn Iterator<Item = chewing::dictionary::Phrase>>);
+    let words = dict.lookup_word(syllable).collect::<Vec<_>>();
+    let mut iter = Box::new(
+        Box::new(words.into_iter()) as Box<dyn Iterator<Item = chewing::dictionary::Phrase>>
+    );
     if let Some(phrase) = iter.next() {
         let c_phrase = unsafe { &mut *phrase_ptr };
         let phrase_str = CString::new(phrase.as_str()).expect("Unable to convert to CString");
@@ -78,8 +76,9 @@ pub extern "C" fn GetPhraseFirst(vec_ptr: *mut c_void, phrase_ptr: *mut Phrase) 
     let new_vec = vec.clone();
     // FIXME Leak the vec because it's reused
     Box::into_raw(vec);
-    let mut iter = Box::new(Box::new(new_vec.into_iter().rev())
-        as Box<dyn Iterator<Item = chewing::dictionary::Phrase>>);
+    let mut iter = Box::new(
+        Box::new(new_vec.into_iter()) as Box<dyn Iterator<Item = chewing::dictionary::Phrase>>
+    );
     if let Some(phrase) = iter.next() {
         let c_phrase = unsafe { &mut *phrase_ptr };
         let phrase_str = CString::new(phrase.as_str()).expect("Unable to convert to CString");
@@ -112,9 +111,8 @@ pub extern "C" fn TreeFindPhrase(
                 .expect("Unable to convert u16 to syllable")
         })
         .collect::<Vec<_>>();
-    let mut phrases = Box::new(dict.lookup_phrase(syllables.as_slice()).collect::<Vec<_>>());
+    let phrases = Box::new(dict.lookup_phrase(syllables.as_slice()).collect::<Vec<_>>());
     if !phrases.is_empty() {
-        phrases.sort();
         return Box::into_raw(phrases).cast();
     }
 
@@ -127,7 +125,7 @@ pub extern "C" fn GetVocabNext(iter_ptr: *mut c_void, phrase_ptr: *mut Phrase) -
     let mut iter = unsafe { Box::from_raw(iter_ptr) };
     if let Some(phrase) = iter.next() {
         let c_phrase = unsafe { &mut *phrase_ptr };
-        let phrase_str = CString::new((&phrase).as_str()).expect("Unable to convert to CString");
+        let phrase_str = CString::new(phrase.as_str()).expect("Unable to convert to CString");
         let phrase_bytes = phrase_str.as_bytes_with_nul();
         c_phrase.freq = phrase.freq() as c_int;
         c_phrase.phrase[0..phrase_bytes.len()].copy_from_slice(phrase_bytes);

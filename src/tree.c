@@ -76,6 +76,7 @@ static int PhraseIntervalIntersect(PhraseIntervalType in1, PhraseIntervalType in
     return (max(in1.from, in2.from) < min(in1.to, in2.to));
 }
 
+#ifndef HAVE_RUST
 void TerminateTree(ChewingData *pgdata)
 {
     pgdata->static_data.tree = NULL;
@@ -106,6 +107,7 @@ int InitTree(ChewingData *pgdata, const char *prefix)
 
     return 0;
 }
+#endif
 
 static int CheckBreakpoint(int from, int to, int bArrBrkpt[])
 {

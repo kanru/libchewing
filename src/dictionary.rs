@@ -97,7 +97,7 @@ pub struct DictionaryInfo {
 ///
 /// assert!(Phrase::new("測", 100) > Phrase::new("冊", 1));
 /// ```
-#[derive(Clone, PartialEq, Eq, Ord, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Phrase {
     phrase: String,
     freq: u32,
@@ -158,6 +158,14 @@ impl PartialOrd for Phrase {
             ord => return ord,
         }
         self.phrase.partial_cmp(&other.phrase)
+    }
+}
+
+/// Phrases are compared by their frequency first, followed by their phrase
+/// string.
+impl Ord for Phrase {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 

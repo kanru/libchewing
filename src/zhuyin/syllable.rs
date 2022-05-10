@@ -113,6 +113,7 @@ impl From<Syllable> for u16 {
 impl TryFrom<u16> for Syllable {
     type Error = DecodeSyllableError;
 
+    #[allow(clippy::unusual_byte_groupings)]
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         let initial = value >> 9;
         let medial = (value & 0b00000000_11_0000_000) >> 7;

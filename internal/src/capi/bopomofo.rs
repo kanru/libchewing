@@ -6,8 +6,7 @@ use std::{
 
 use chewing::{
     editor::syllable::{
-        dc26::DaiChien26, et26::Et26, hsu::Hsu, pinyin::Pinyin, standard::Standard, KeyBehavior,
-        KeyboardLayoutCompat, SyllableEditor,
+        DaiChien26, Et26, Hsu, KeyBehavior, KeyboardLayoutCompat, Pinyin, Standard, SyllableEditor,
     },
     keymap::{IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, QWERTY},
 };

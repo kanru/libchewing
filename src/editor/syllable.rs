@@ -22,11 +22,19 @@ use crate::{
     zhuyin::{Bopomofo, Syllable},
 };
 
-pub mod dc26;
-pub mod et26;
-pub mod hsu;
-pub mod pinyin;
-pub mod standard;
+pub use self::{
+    dc26::DaiChien26,
+    et26::Et26,
+    hsu::Hsu,
+    pinyin::{Pinyin, PinyinVariant},
+    standard::Standard,
+};
+
+mod dc26;
+mod et26;
+mod hsu;
+mod pinyin;
+mod standard;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]

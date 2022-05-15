@@ -106,6 +106,7 @@ pub struct DictionaryInfo {
 pub struct Phrase {
     phrase: String,
     freq: u32,
+    last_used: Option<u64>,
 }
 
 impl Phrase {
@@ -122,7 +123,13 @@ impl Phrase {
         Phrase {
             phrase: phrase.into(),
             freq,
+            last_used: None,
         }
+    }
+    /// Sets the last used time of the phrase.
+    pub fn with_time(mut self, last_used: u64) -> Phrase {
+        self.last_used = Some(last_used);
+        self
     }
     /// Returns the frequency of the phrase.
     ///
@@ -137,6 +144,12 @@ impl Phrase {
     /// ```
     pub fn freq(&self) -> u32 {
         self.freq
+    }
+    /// Returns the last time this phrase was selected as user phrase.
+    ///
+    /// The time is a counter increased by one for each keystroke.
+    pub fn last_used(&self) -> Option<u64> {
+        self.last_used()
     }
     /// Returns the inner str of the phrase.
     ///
@@ -198,6 +211,15 @@ where
 {
     fn from(tuple: (S, u32)) -> Self {
         Phrase::new(tuple.0, tuple.1)
+    }
+}
+
+impl<S> From<(S, u32, u64)> for Phrase
+where
+    S: Into<String>,
+{
+    fn from(tuple: (S, u32, u64)) -> Self {
+        Phrase::new(tuple.0, tuple.1).with_time(tuple.2)
     }
 }
 
@@ -310,6 +332,7 @@ pub trait DictionaryMut {
         syllables: &[Syllable],
         phrase: Phrase,
         user_freq: u32,
+        time: u64,
     ) -> Result<(), DictionaryUpdateError>;
 }
 
@@ -376,6 +399,7 @@ impl DictionaryMut for HashMap<Vec<Syllable>, Vec<Phrase>> {
         _syllables: &[Syllable],
         _phrase: Phrase,
         _user_freq: u32,
+        _time: u64,
     ) -> Result<(), DictionaryUpdateError> {
         Ok(())
     }
@@ -514,10 +538,11 @@ impl DictionaryMut for ChainedDictionary {
         syllables: &[Syllable],
         phrase: Phrase,
         user_freq: u32,
+        time: u64,
     ) -> Result<(), DictionaryUpdateError> {
         for dict in &mut self.inner {
             if let Some(dict_mut) = dict.as_mut_dict() {
-                dict_mut.update(syllables, phrase.clone(), user_freq)?;
+                dict_mut.update(syllables, phrase.clone(), user_freq, time)?;
             }
         }
         Ok(())

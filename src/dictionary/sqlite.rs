@@ -258,7 +258,8 @@ impl Dictionary for SqliteDictionary {
             .prepare_cached(
                 "SELECT
                     phrase,
-                    max(freq, coalesce(user_freq, 0))
+                    max(freq, coalesce(user_freq, 0)),
+                    time
                 FROM dictionary_v1 LEFT JOIN userphrase_v2 ON userphrase_id = id
                 WHERE syllables = ?
                 ORDER BY sort_id ASC, max(freq, coalesce(user_freq, 0)) DESC, phrase DESC",
@@ -266,10 +267,12 @@ impl Dictionary for SqliteDictionary {
             .expect("SQL error");
         Box::new(
             stmt.query_map([syllables_bytes], |row| {
-                Ok(Phrase::new::<String>(
-                    row.get(0).unwrap(),
-                    row.get(1).unwrap(),
-                ))
+                let mut phrase = Phrase::new::<String>(row.get(0).unwrap(), row.get(1).unwrap());
+                let time: Option<u64> = row.get(2).unwrap();
+                if let Some(last_used) = time {
+                    phrase = phrase.with_time(last_used);
+                }
+                Ok(phrase)
             })
             .unwrap()
             .map(|r| r.unwrap())
@@ -322,6 +325,7 @@ impl DictionaryMut for SqliteDictionary {
         syllables: &[Syllable],
         phrase: Phrase,
         user_freq: u32,
+        time: u64,
     ) -> Result<(), DictionaryUpdateError> {
         let syllables_bytes = syllables.into_syllables_bytes();
         let tx = self.conn.transaction()?;
@@ -342,8 +346,7 @@ impl DictionaryMut for SqliteDictionary {
                     let mut stmt = tx.prepare_cached(
                         "INSERT INTO userphrase_v2 (user_freq, time) VALUES (?, ?)",
                     )?;
-                    // FIXME time is not zero
-                    stmt.execute(params![user_freq, 0u64])?;
+                    stmt.execute(params![user_freq, time])?;
                     let userphrase_id = tx.last_insert_rowid();
                     let mut stmt = tx.prepare_cached(
                         "INSERT OR REPLACE INTO dictionary_v1 (
@@ -511,7 +514,10 @@ mod tests {
 
         let dict = SqliteDictionary::open(&temp_path).expect("Unable to open database");
         assert_eq!(
-            vec![Phrase::new("策士", 9318), Phrase::new("測試", 9318)],
+            vec![
+                Phrase::new("策士", 9318).with_time(186613),
+                Phrase::new("測試", 9318).with_time(186613)
+            ],
             dict.lookup_phrase(&[
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
@@ -530,9 +536,10 @@ mod tests {
             ],
             ("測試", 9318).into(),
             9900,
+            0,
         )?;
         assert_eq!(
-            vec![Phrase::new("測試", 9900)],
+            vec![Phrase::new("測試", 9900).with_time(0)],
             dict.lookup_phrase(&[
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
@@ -550,9 +557,9 @@ mod tests {
             syl![Bopomofo::SH, Bopomofo::TONE4],
         ];
         dict.insert(&syllables, ("測試", 9318).into())?;
-        dict.update(&syllables, ("測試", 9318).into(), 9900)?;
+        dict.update(&syllables, ("測試", 9318).into(), 9900, 0)?;
         assert_eq!(
-            vec![Phrase::new("測試", 9900)],
+            vec![Phrase::new("測試", 9900).with_time(0)],
             dict.lookup_phrase(&[
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],

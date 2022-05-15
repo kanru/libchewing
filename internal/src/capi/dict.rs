@@ -1,12 +1,11 @@
 use std::{
     ffi::{c_void, CStr, CString},
-    fs::File,
     os::raw::{c_char, c_int},
     path::Path,
     slice,
 };
 
-use chewing::dictionary::{ChainedDictionary, Dictionary, TrieDictionary};
+use chewing::dictionary::{ChainedDictionary, Dictionary, SqliteDictionary, TrieDictionary};
 
 #[no_mangle]
 pub extern "C" fn InitDict(prefix: *mut c_char) -> *mut c_void {
@@ -17,13 +16,29 @@ pub extern "C" fn InitDict(prefix: *mut c_char) -> *mut c_void {
 
     let mut tsi_db_path = path.to_path_buf();
     tsi_db_path.push("tsi.dat");
-    let tsi_db_file = File::open(tsi_db_path).expect("Unable to open file");
-    let tsi_db = Box::new(TrieDictionary::new(tsi_db_file).expect("Unable to parse tsi db"));
+    let tsi_db = if let Ok(db) = SqliteDictionary::open_read_only(&tsi_db_path) {
+        Box::new(db) as Box<dyn Dictionary>
+    } else if let Ok(db) = TrieDictionary::open(&tsi_db_path) {
+        Box::new(db) as Box<dyn Dictionary>
+    } else {
+        panic!(
+            "Unsupported db format for {}",
+            tsi_db_path.to_string_lossy()
+        );
+    };
 
     let mut word_db_path = path.to_path_buf();
     word_db_path.push("word.dat");
-    let word_db_file = File::open(word_db_path).expect("Unable to open file");
-    let word_db = Box::new(TrieDictionary::new(word_db_file).expect("Unable to parse word db"));
+    let word_db = if let Ok(db) = SqliteDictionary::open_read_only(&word_db_path) {
+        Box::new(db) as Box<dyn Dictionary>
+    } else if let Ok(db) = TrieDictionary::open(&word_db_path) {
+        Box::new(db) as Box<dyn Dictionary>
+    } else {
+        panic!(
+            "Unsupported db format for {}",
+            word_db_path.to_string_lossy()
+        );
+    };
 
     let dict = Box::new(ChainedDictionary::new(vec![word_db, tsi_db], vec![]));
 

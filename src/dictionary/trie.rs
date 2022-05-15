@@ -3,7 +3,9 @@ use std::{
     collections::VecDeque,
     ffi::CString,
     fmt::Debug,
-    io::{self, Read, Seek, Write},
+    fs::File,
+    io::{self, BufWriter, Read, Seek, Write},
+    path::Path,
 };
 
 use binary_layout::define_layout;
@@ -11,7 +13,10 @@ use riff::{Chunk, ChunkContents, ChunkId, RIFF_ID};
 
 use crate::zhuyin::Syllable;
 
-use super::{Dictionary, DictionaryInfo, DictionaryMut, DuplicatePhraseError, Phrase, Phrases};
+use super::{
+    BuildDictionaryError, Dictionary, DictionaryBuilder, DictionaryInfo, DictionaryMut,
+    DuplicatePhraseError, Phrase, Phrases,
+};
 
 const CHEW: ChunkId = ChunkId { value: *b"CHEW" };
 const DICT: ChunkId = ChunkId { value: *b"DICT" };
@@ -60,14 +65,14 @@ define_layout!(trie_leaf, LittleEndian, {
 /// use std::fs::File;
 ///
 /// use chewing::{syl, zhuyin::{Bopomofo, Syllable}};
-/// # use chewing::dictionary::TrieDictionaryBuilder;
+/// # use chewing::dictionary::{DictionaryBuilder, TrieDictionaryBuilder};
 /// use chewing::dictionary::{Dictionary, TrieDictionary};
 /// # let mut tempfile = File::create("dict.dat")?;
 /// # let mut builder = TrieDictionaryBuilder::new();
 /// # builder.insert(&[
 /// #     syl![Bopomofo::Z, Bopomofo::TONE4],
 /// #     syl![Bopomofo::D, Bopomofo::I, Bopomofo::AN]
-/// # ], "字典", 0);
+/// # ], ("字典", 0).into());
 /// # builder.write(&mut tempfile)?;
 ///
 /// let mut file = File::open("dict.dat")?;
@@ -92,6 +97,25 @@ pub struct TrieDictionary {
 }
 
 impl TrieDictionary {
+    /// Creates a new `TrieDictionary` instance from a file.
+    ///
+    /// The data in the file must conform to the dictionary format spec. See
+    /// [`TrieDictionaryBuilder`] on how to build a dictionary.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use chewing::dictionary::TrieDictionary;
+    ///
+    /// let dict = TrieDictionary::open("dict.dat")?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn open<P: AsRef<Path>>(path: P) -> io::Result<TrieDictionary> {
+        let mut file = File::open(path)?;
+        TrieDictionary::new(&mut file)
+    }
     /// Creates a new `TrieDictionary` instance from a input stream.
     ///
     /// The underlying data of the input stream must conform to the dictionary
@@ -254,14 +278,14 @@ impl Dictionary for TrieDictionary {
 /// use std::fs::File;
 ///
 /// use chewing::{syl, zhuyin::Bopomofo};
-/// use chewing::dictionary::TrieDictionaryBuilder;
+/// use chewing::dictionary::{DictionaryBuilder, TrieDictionaryBuilder};
 ///
 /// let mut file = File::create("dict.dat")?;
 /// let mut builder = TrieDictionaryBuilder::new();
 /// builder.insert(&[
 ///     syl![Bopomofo::Z, Bopomofo::TONE4],
 ///     syl![Bopomofo::D, Bopomofo::I, Bopomofo::AN]
-/// ], "字典", 0);
+/// ], ("字典", 0).into());
 /// builder.write(&mut file)?;
 /// # Ok(())
 /// # }
@@ -469,7 +493,7 @@ pub struct TrieDictionaryBuilder {
     // The builder uses an arena to allocate nodes and reference each node with
     // node index.
     arena: Vec<TrieBuilderNode>,
-    about: DictionaryInfo,
+    info: DictionaryInfo,
 }
 
 #[derive(Debug, PartialEq)]
@@ -525,76 +549,8 @@ impl TrieDictionaryBuilder {
         };
         TrieDictionaryBuilder {
             arena: vec![root],
-            about: Default::default(),
+            info: Default::default(),
         }
-    }
-
-    /// Sets the `name` dictionary metadata. See also [`DictionaryInfo`].
-    pub fn set_name<S: Into<String>>(&mut self, name: S) {
-        self.about.name = Some(name.into());
-    }
-
-    /// Sets the `copyright` dictionary metadata. See also [`DictionaryInfo`].
-    pub fn set_copyright<S: Into<String>>(&mut self, copyright: S) {
-        self.about.copyright = Some(copyright.into());
-    }
-
-    /// Sets the `license` dictionary metadata. See also [`DictionaryInfo`].
-    pub fn set_license<S: Into<String>>(&mut self, license: S) {
-        self.about.license = Some(license.into());
-    }
-
-    /// Set the `created_date` dictionary metadata. See also [`DictionaryInfo`].
-    pub fn set_created_date<S: Into<String>>(&mut self, date: S) {
-        self.about.created_date = Some(date.into());
-    }
-
-    /// Sets the `version` dictionary metadata. See also [`DictionaryInfo`].
-    pub fn set_version<S: Into<String>>(&mut self, version: S) {
-        self.about.version = Some(version.into());
-    }
-
-    /// Sets the `software` dictionary metadata. See also [`DictionaryInfo`].
-    pub fn set_software<S: Into<String>>(&mut self, software: S) {
-        self.about.software = Some(software.into())
-    }
-
-    /// Inserts a new entry to the dictionary.
-    ///
-    /// A DuplicatePhraseError is returned if a phrase is already present with
-    /// the same syllables.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use chewing::{syl, zhuyin::Bopomofo};
-    /// use chewing::dictionary::TrieDictionaryBuilder;
-    ///
-    /// let mut builder = TrieDictionaryBuilder::new();
-    ///
-    /// builder.insert(&[
-    ///     syl![Bopomofo::Z, Bopomofo::TONE4],
-    ///     syl![Bopomofo::D, Bopomofo::I, Bopomofo::AN]
-    /// ], "字典", 0);
-    /// ```
-    pub fn insert(
-        &mut self,
-        syllables: &[Syllable],
-        phrase: &str,
-        frequency: u32,
-    ) -> Result<(), DuplicatePhraseError> {
-        let leaf_id = self.alloc_leaf(phrase, frequency);
-        let parent_id = self.find_or_insert_internal(syllables);
-        if self.arena[parent_id]
-            .children
-            .iter()
-            .map(|&child_id| &self.arena[child_id as usize])
-            .any(|child| child.phrase == phrase)
-        {
-            return Err(DuplicatePhraseError);
-        }
-        self.arena[parent_id].children.push(leaf_id);
-        Ok(())
     }
 
     /// Allocates a new leaf node and returns the new node id.
@@ -765,37 +721,37 @@ impl TrieDictionaryBuilder {
 
     fn info_chunks(&self) -> Result<Vec<ChunkContents>, io::Error> {
         let mut info_chunks = vec![];
-        if let Some(name) = &self.about.name {
+        if let Some(name) = &self.info.name {
             info_chunks.push(ChunkContents::Data(
                 INAM,
                 CString::new(name.as_bytes())?.into_bytes(),
             ))
         }
-        if let Some(copyright) = &self.about.copyright {
+        if let Some(copyright) = &self.info.copyright {
             info_chunks.push(ChunkContents::Data(
                 ICOP,
                 CString::new(copyright.as_bytes())?.into_bytes(),
             ))
         }
-        if let Some(license) = &self.about.license {
+        if let Some(license) = &self.info.license {
             info_chunks.push(ChunkContents::Data(
                 ILIC,
                 CString::new(license.as_bytes())?.into_bytes(),
             ))
         }
-        if let Some(created_date) = &self.about.created_date {
+        if let Some(created_date) = &self.info.created_date {
             info_chunks.push(ChunkContents::Data(
                 ICRD,
                 CString::new(created_date.as_bytes())?.into_bytes(),
             ))
         }
-        if let Some(version) = &self.about.version {
+        if let Some(version) = &self.info.version {
             info_chunks.push(ChunkContents::Data(
                 IREV,
                 CString::new(version.as_bytes())?.into_bytes(),
             ))
         }
-        if let Some(software) = &self.about.software {
+        if let Some(software) = &self.info.software {
             info_chunks.push(ChunkContents::Data(
                 ISFT,
                 CString::new(software.as_bytes())?.into_bytes(),
@@ -810,31 +766,31 @@ impl TrieDictionaryBuilder {
     ///
     /// ```
     /// use chewing::{syl, zhuyin::Bopomofo};
-    /// use chewing::dictionary::TrieDictionaryBuilder;
+    /// use chewing::dictionary::{DictionaryBuilder, TrieDictionaryBuilder};
     ///
     /// let mut builder = TrieDictionaryBuilder::new();
     /// builder.insert(&[
     ///     syl![Bopomofo::G, Bopomofo::U, Bopomofo::O, Bopomofo::TONE2],
-    /// ], "國", 0);
+    /// ], ("國", 0).into());
     /// builder.insert(&[
     ///     syl![Bopomofo::M, Bopomofo::I, Bopomofo::EN, Bopomofo::TONE2]
-    /// ], "民", 0);
+    /// ], ("民", 0).into());
     /// builder.insert(&[
     ///     syl![Bopomofo::D, Bopomofo::A, Bopomofo::TONE4],
-    /// ], "大", 0);
+    /// ], ("大", 0).into());
     /// builder.insert(&[
     ///     syl![Bopomofo::H, Bopomofo::U, Bopomofo::EI, Bopomofo::TONE4],
-    /// ], "會", 0);
+    /// ], ("會", 0).into());
     /// builder.insert(&[
     ///     syl![Bopomofo::G, Bopomofo::U, Bopomofo::O, Bopomofo::TONE2],
     ///     syl![Bopomofo::M, Bopomofo::I, Bopomofo::EN, Bopomofo::TONE2]
-    /// ], "國民", 0);
+    /// ], ("國民", 0).into());
     /// builder.insert(&[
     ///     syl![Bopomofo::G, Bopomofo::U, Bopomofo::O, Bopomofo::TONE2],
     ///     syl![Bopomofo::M, Bopomofo::I, Bopomofo::EN, Bopomofo::TONE2],
     ///     syl![Bopomofo::D, Bopomofo::A, Bopomofo::TONE4],
     ///     syl![Bopomofo::H, Bopomofo::U, Bopomofo::EI, Bopomofo::TONE4],
-    /// ], "國民大會", 0);
+    /// ], ("國民大會", 0).into());
     /// let stats = builder.statistics();
     /// assert_eq!(14, stats.node_count);
     /// assert_eq!(6, stats.internal_leaf_count);
@@ -912,6 +868,59 @@ impl TrieDictionaryBuilder {
     }
 }
 
+impl DictionaryBuilder for TrieDictionaryBuilder {
+    fn set_info(&mut self, info: DictionaryInfo) -> Result<(), BuildDictionaryError> {
+        self.info = info;
+        Ok(())
+    }
+
+    /// Inserts a new entry to the dictionary.
+    ///
+    /// A DuplicatePhraseError is returned if a phrase is already present with
+    /// the same syllables.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chewing::{syl, zhuyin::Bopomofo};
+    /// use chewing::dictionary::{DictionaryBuilder, TrieDictionaryBuilder};
+    ///
+    /// let mut builder = TrieDictionaryBuilder::new();
+    ///
+    /// builder.insert(&[
+    ///     syl![Bopomofo::Z, Bopomofo::TONE4],
+    ///     syl![Bopomofo::D, Bopomofo::I, Bopomofo::AN]
+    /// ], ("字典", 0).into());
+    /// ```
+    fn insert(
+        &mut self,
+        syllables: &[Syllable],
+        phrase: Phrase,
+    ) -> Result<(), BuildDictionaryError> {
+        let leaf_id = self.alloc_leaf(phrase.as_str(), phrase.freq());
+        let parent_id = self.find_or_insert_internal(syllables);
+        if self.arena[parent_id]
+            .children
+            .iter()
+            .map(|&child_id| &self.arena[child_id as usize])
+            .any(|child| child.phrase == phrase.as_str())
+        {
+            return Err(BuildDictionaryError {
+                source: Box::new(DuplicatePhraseError),
+            });
+        }
+        self.arena[parent_id].children.push(leaf_id);
+        Ok(())
+    }
+
+    fn build(&mut self, path: &Path) -> Result<(), BuildDictionaryError> {
+        let database = File::create(path)?;
+        let mut writer = BufWriter::new(database);
+        self.write(&mut writer)?;
+        Ok(())
+    }
+}
+
 impl Default for TrieDictionaryBuilder {
     fn default() -> Self {
         Self::new()
@@ -923,7 +932,9 @@ mod tests {
     use std::io::Cursor;
 
     use crate::{
-        dictionary::{trie::TrieBuilderNode, Dictionary, Phrase},
+        dictionary::{
+            trie::TrieBuilderNode, Dictionary, DictionaryBuilder, DictionaryInfo, Phrase,
+        },
         syl,
         zhuyin::Bopomofo,
     };
@@ -938,16 +949,14 @@ mod tests {
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
             ],
-            "測試",
-            100,
+            ("測試", 100).into(),
         )?;
         builder.insert(
             &vec![
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::S, Bopomofo::U, Bopomofo::O, Bopomofo::TONE3],
             ],
-            "廁所",
-            100,
+            ("廁所", 100).into(),
         )?;
         assert_eq!(
             vec![
@@ -1004,13 +1013,11 @@ mod tests {
         let mut builder = TrieDictionaryBuilder::new();
         builder.insert(
             &vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]],
-            "測",
-            1,
+            ("測", 1).into(),
         )?;
         builder.insert(
             &vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]],
-            "冊",
-            1,
+            ("冊", 1).into(),
         )?;
         let mut cursor = Cursor::new(vec![]);
         builder.write(&mut cursor)?;
@@ -1033,16 +1040,14 @@ mod tests {
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
             ],
-            "測試",
-            1,
+            ("測試", 1).into(),
         )?;
         builder.insert(
             &vec![
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
             ],
-            "策試",
-            2,
+            ("策試", 2).into(),
         )?;
         builder.insert(
             &vec![
@@ -1051,8 +1056,7 @@ mod tests {
                 syl![Bopomofo::CH, Bopomofo::ENG, Bopomofo::TONE2],
                 syl![Bopomofo::G, Bopomofo::U, Bopomofo::ENG],
             ],
-            "測試成功",
-            3,
+            ("測試成功", 3).into(),
         )?;
         let mut cursor = Cursor::new(vec![]);
         builder.write(&mut cursor)?;
@@ -1098,8 +1102,7 @@ mod tests {
                     syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                     syl![Bopomofo::SH, Bopomofo::TONE4],
                 ],
-                "測試",
-                1,
+                ("測試", 1).into(),
             )
             .expect("Duplicate phrase error");
         builder
@@ -1108,8 +1111,7 @@ mod tests {
                     syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                     syl![Bopomofo::SH, Bopomofo::TONE4],
                 ],
-                "測試",
-                2,
+                ("測試", 2).into(),
             )
             .expect("Duplicate phrase error");
     }
@@ -1120,8 +1122,7 @@ mod tests {
         for word in ["冊", "策", "測", "側"] {
             builder.insert(
                 &vec![syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4]],
-                word,
-                0,
+                (word, 0).into(),
             )?;
         }
         let mut cursor = Cursor::new(vec![]);
@@ -1149,40 +1150,35 @@ mod tests {
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
             ],
-            "側室",
-            318,
+            ("側室", 318).into(),
         )?;
         builder.insert(
             &vec![
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
             ],
-            "側視",
-            318,
+            ("側視", 318).into(),
         )?;
         builder.insert(
             &vec![
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
             ],
-            "策士",
-            318,
+            ("策士", 318).into(),
         )?;
         builder.insert(
             &vec![
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
             ],
-            "策試",
-            318,
+            ("策試", 318).into(),
         )?;
         builder.insert(
             &vec![
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
             ],
-            "測試",
-            9318,
+            ("測試", 9318).into(),
         )?;
         let mut cursor = Cursor::new(vec![]);
         builder.write(&mut cursor)?;
@@ -1208,12 +1204,15 @@ mod tests {
     #[test]
     fn tree_builder_write_read_metadata() {
         let mut builder = TrieDictionaryBuilder::new();
-        builder.set_name("name");
-        builder.set_copyright("copyright");
-        builder.set_license("license");
-        builder.set_created_date("created_date");
-        builder.set_version("version");
-        builder.set_software("software");
+        let info = DictionaryInfo {
+            name: Some("name".into()),
+            copyright: Some("copyright".into()),
+            license: Some("license".into()),
+            created_date: Some("created_date".into()),
+            version: Some("version".into()),
+            software: Some("software".into()),
+        };
+        builder.set_info(info).unwrap();
 
         let mut cursor = Cursor::new(vec![]);
         builder.write(&mut cursor).unwrap();

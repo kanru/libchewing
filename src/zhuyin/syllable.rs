@@ -72,6 +72,20 @@ impl Syllable {
 
         (initial << 9) | (medial << 7) | (rime << 3) | tone
     }
+    /// Returns the `Syllable` encoded in a u16 integer in little-endian bytes.
+    ///
+    /// The data layout used:
+    ///
+    /// ```text
+    ///  0                   1
+    ///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// |   Initial   | M | Rime  |Tone |
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// ```
+    pub fn to_le_bytes(&self) -> [u8; 2] {
+        self.to_u16().to_le_bytes()
+    }
     pub fn update(&mut self, bopomofo: Bopomofo) {
         match bopomofo.kind() {
             BopomofoKind::Initial => self.initial.replace(bopomofo),
@@ -106,6 +120,12 @@ impl Default for Syllable {
 
 impl From<Syllable> for u16 {
     fn from(syl: Syllable) -> Self {
+        syl.to_u16()
+    }
+}
+
+impl From<&Syllable> for u16 {
+    fn from(syl: &Syllable) -> Self {
         syl.to_u16()
     }
 }
@@ -166,6 +186,23 @@ impl TryFrom<u16> for Syllable {
             rime,
             tone,
         })
+    }
+}
+
+pub trait IntoSyllablesBytes {
+    fn into_syllables_bytes(self) -> Vec<u8>;
+}
+
+impl<T> IntoSyllablesBytes for T
+where
+    T: IntoIterator,
+    T::Item: Into<u16>,
+{
+    fn into_syllables_bytes(self) -> Vec<u8> {
+        let mut syllables_bytes = vec![];
+        self.into_iter()
+            .for_each(|syl| syllables_bytes.extend_from_slice(&syl.into().to_le_bytes()));
+        syllables_bytes
     }
 }
 

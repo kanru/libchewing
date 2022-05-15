@@ -1,16 +1,19 @@
 use std::{
-    fs::File,
-    io::{BufRead, BufReader, BufWriter},
+    fs::{self, File},
+    io::{BufRead, BufReader},
+    path::Path,
 };
 
 use chewing::{
-    dictionary::TrieDictionaryBuilder,
+    dictionary::{
+        DictionaryBuilder, DictionaryInfo, SqliteDictionaryBuilder, TrieDictionaryBuilder,
+    },
     zhuyin::{Bopomofo, Syllable},
 };
 use chrono::Utc;
 use clap::{Arg, Command};
 use miette::{
-    Context, Diagnostic, IntoDiagnostic, MietteSpanContents, Result, SourceCode, SourceSpan,
+    bail, Context, Diagnostic, IntoDiagnostic, MietteSpanContents, Result, SourceCode, SourceSpan,
 };
 use thiserror::Error;
 
@@ -70,6 +73,14 @@ fn main() -> Result<()> {
     let m = Command::new("init_database")
         .about("This program creates a new chewing phrase dictionary file.")
         .arg(
+            Arg::new("type")
+                .short('t')
+                .takes_value(true)
+                .possible_value("sqlite")
+                .possible_value("trie")
+                .default_value("sqlite"),
+        )
+        .arg(
             Arg::new("name")
                 .short('n')
                 .takes_value(true)
@@ -100,22 +111,26 @@ fn main() -> Result<()> {
 
     let tsi_src: String = m.value_of_t_or_exit("tsi.src");
     let output: String = m.value_of_t_or_exit("output");
+    let db_type: String = m.value_of_t_or_exit("type");
     let name: String = m.value_of_t_or_exit("name");
     let copyright: String = m.value_of_t_or_exit("copyright");
     let license: String = m.value_of_t_or_exit("license");
     let version: String = m.value_of_t_or_exit("version");
 
-    let mut trie_builder = TrieDictionaryBuilder::new();
-    trie_builder.set_name(name);
-    trie_builder.set_copyright(copyright);
-    trie_builder.set_license(license);
-    trie_builder.set_version(version);
-    trie_builder.set_software(format!(
-        "{} {}",
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION")
-    ));
-    trie_builder.set_created_date(timestamp);
+    let mut builder: Box<dyn DictionaryBuilder> = match db_type.as_str() {
+        "sqlite" => Box::new(SqliteDictionaryBuilder::new()),
+        "trie" => Box::new(TrieDictionaryBuilder::new()),
+        _ => bail!("Unknown database type {}", db_type),
+    };
+
+    builder.set_info(DictionaryInfo {
+        name: name.into(),
+        copyright: copyright.into(),
+        license: license.into(),
+        version: version.into(),
+        software: format!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")).into(),
+        created_date: timestamp.into(),
+    })?;
 
     let tsi = File::open(&tsi_src).into_diagnostic()?;
     let reader = BufReader::new(tsi);
@@ -149,8 +164,8 @@ fn main() -> Result<()> {
             }
             syllables.push(syllable_builder.build());
         }
-        trie_builder
-            .insert(&syllables, phrase, freq)
+        builder
+            .insert(&syllables, (phrase, freq).into())
             .map_err(|err| ParseError {
                 src: NamedLine {
                     name: tsi_src.clone(),
@@ -159,35 +174,16 @@ fn main() -> Result<()> {
                     column: 0,
                 },
                 err_span: 0.into(),
-                source: Box::new(err),
+                source: err.into(),
             })?;
     }
-
-    let database = File::create(&output)
-        .into_diagnostic()
-        .wrap_err("Unable to create database file")?;
-    let mut writer = BufWriter::new(database);
-
-    println!("Writing database file to {} ...", output);
-    trie_builder
-        .write(&mut writer)
-        .into_diagnostic()
-        .wrap_err("Unable to write database file")?;
-    println!("Done.");
-
-    let stats = trie_builder.statistics();
-    println!("Statistics:");
-    println!("* Node count: {}", stats.node_count);
-    println!(
-        "* Different sounding phrases: {}",
-        stats.internal_leaf_count
-    );
-    println!("* Different sounding words: {}", stats.root_branch_count);
-    println!("* Total number of words/phrases: {}", stats.leaf_node_count);
-    println!("* Longest phrase length: {}", stats.max_height - 2);
-    println!("* Average phrase length: {}", stats.avg_height);
-    println!("* Max branch count: {}", stats.max_branch_count);
-    println!("* Average branch count: {}", stats.avg_branch_count);
+    let path: &Path = output.as_ref();
+    if path.exists() {
+        fs::remove_file(path)
+            .into_diagnostic()
+            .wrap_err("Unable to overwrite output")?;
+    }
+    builder.build(path)?;
 
     Ok(())
 }

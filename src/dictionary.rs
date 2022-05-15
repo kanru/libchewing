@@ -4,6 +4,7 @@ use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
     fmt::Display,
+    path::Path,
 };
 
 use indexmap::IndexMap;
@@ -12,8 +13,11 @@ use thiserror::Error;
 
 use crate::zhuyin::Syllable;
 
+pub use sqlite::{SqliteDictionary, SqliteDictionaryBuilder, SqliteDictionaryError};
 pub use trie::{TrieDictionary, TrieDictionaryBuilder, TrieDictionaryStatistics};
 
+/// cbindgen:ignore
+mod sqlite;
 /// cbindgen:ignore
 mod trie;
 
@@ -22,7 +26,8 @@ mod trie;
 #[error("update dictionary failed")]
 #[diagnostic(code(chewing::dictionary_update_error))]
 pub struct DictionaryUpdateError {
-    pub source: Box<dyn std::error::Error>,
+    #[from]
+    pub source: Box<dyn std::error::Error + Send + Sync>,
 }
 
 /// The error type which is returned from building or updating a dictionary.
@@ -299,6 +304,31 @@ pub trait DictionaryMut {
         syllables: &[Syllable],
         phrase: Phrase,
     ) -> Result<(), DictionaryUpdateError>;
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("build dictionary error")]
+#[diagnostic(code(chewing::build_dictionary_error))]
+pub struct BuildDictionaryError {
+    source: Box<dyn std::error::Error + Send + Sync>,
+}
+
+impl From<std::io::Error> for BuildDictionaryError {
+    fn from(source: std::io::Error) -> Self {
+        BuildDictionaryError {
+            source: Box::new(source),
+        }
+    }
+}
+
+pub trait DictionaryBuilder {
+    fn set_info(&mut self, info: DictionaryInfo) -> Result<(), BuildDictionaryError>;
+    fn insert(
+        &mut self,
+        syllables: &[Syllable],
+        phrase: Phrase,
+    ) -> Result<(), BuildDictionaryError>;
+    fn build(&mut self, path: &Path) -> Result<(), BuildDictionaryError>;
 }
 
 impl Dictionary for HashMap<Vec<Syllable>, Vec<Phrase>> {

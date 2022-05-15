@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use miette::{miette, Diagnostic};
-use rusqlite::{params, Connection, Error as RusqliteError, OpenFlags};
+use rusqlite::{params, Connection, Error as RusqliteError, OpenFlags, OptionalExtension};
 use thiserror::Error;
 
 use crate::zhuyin::{IntoSyllablesBytes, Syllable};
@@ -291,6 +291,14 @@ impl Dictionary for SqliteDictionary {
     }
 }
 
+impl From<RusqliteError> for DictionaryUpdateError {
+    fn from(source: RusqliteError) -> Self {
+        DictionaryUpdateError {
+            source: source.into(),
+        }
+    }
+}
+
 impl DictionaryMut for SqliteDictionary {
     fn insert(
         &mut self,
@@ -298,18 +306,63 @@ impl DictionaryMut for SqliteDictionary {
         phrase: Phrase,
     ) -> Result<(), DictionaryUpdateError> {
         let syllables_bytes = syllables.into_syllables_bytes();
-        let mut stmt = self
-            .conn
-            .prepare_cached(
-                "INSERT OR REPLACE INTO dictionary_v1 (
+        let mut stmt = self.conn.prepare_cached(
+            "INSERT OR REPLACE INTO dictionary_v1 (
                     syllables,
                     phrase,
-                    freq,
+                    freq
             ) VALUES (?, ?, ?)",
-            )
-            .map_err(|err| Box::new(err) as Box<dyn std::error::Error + Send + Sync>)?;
-        stmt.execute(params![syllables_bytes, phrase.as_str(), phrase.freq()])
-            .map_err(|err| Box::new(err) as Box<dyn std::error::Error + Send + Sync>)?;
+        )?;
+        stmt.execute(params![syllables_bytes, phrase.as_str(), phrase.freq()])?;
+        Ok(())
+    }
+
+    fn update(
+        &mut self,
+        syllables: &[Syllable],
+        phrase: Phrase,
+        user_freq: u32,
+    ) -> Result<(), DictionaryUpdateError> {
+        let syllables_bytes = syllables.into_syllables_bytes();
+        let tx = self.conn.transaction()?;
+        {
+            let mut stmt = tx.prepare_cached(
+                "SELECT userphrase_id FROM dictionary_v1 WHERE syllables = ? AND phrase = ?",
+            )?;
+            let userphrase_id: Option<Option<u64>> = stmt
+                .query_row(params![syllables_bytes, phrase.as_str()], |row| row.get(0))
+                .optional()?;
+            match userphrase_id {
+                Some(Some(id)) => {
+                    let mut stmt =
+                        tx.prepare_cached("UPDATE userphrase_v2 SET user_freq = ? WHERE id = ?")?;
+                    stmt.execute(params![user_freq, id])?;
+                }
+                Some(None) | None => {
+                    let mut stmt = tx.prepare_cached(
+                        "INSERT INTO userphrase_v2 (user_freq, time) VALUES (?, ?)",
+                    )?;
+                    // FIXME time is not zero
+                    stmt.execute(params![user_freq, 0u64])?;
+                    let userphrase_id = tx.last_insert_rowid();
+                    let mut stmt = tx.prepare_cached(
+                        "INSERT OR REPLACE INTO dictionary_v1 (
+                            syllables,
+                            phrase,
+                            freq,
+                            userphrase_id
+                        ) VALUES (?, ?, ?, ?)",
+                    )?;
+                    stmt.execute(params![
+                        syllables_bytes,
+                        phrase.as_str(),
+                        phrase.freq(),
+                        userphrase_id
+                    ])?;
+                }
+            }
+        }
+        tx.commit()?;
         Ok(())
     }
 }
@@ -404,11 +457,13 @@ impl DictionaryBuilder for SqliteDictionaryBuilder {
 
 #[cfg(test)]
 mod tests {
+    use std::error::Error;
+
     use rusqlite::{params, Connection};
     use tempfile::NamedTempFile;
 
     use crate::{
-        dictionary::{Dictionary, Phrase},
+        dictionary::{Dictionary, DictionaryMut, Phrase},
         syl,
         zhuyin::Bopomofo,
     };
@@ -457,11 +512,53 @@ mod tests {
         let dict = SqliteDictionary::open(&temp_path).expect("Unable to open database");
         assert_eq!(
             vec![Phrase::new("策士", 9318), Phrase::new("測試", 9318)],
-            dict.lookup_phrase(&vec![
+            dict.lookup_phrase(&[
                 syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
                 syl![Bopomofo::SH, Bopomofo::TONE4],
             ])
-            .collect::<Vec<Phrase>>()
+            .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn insert_and_update_user_freq() -> Result<(), Box<dyn Error>> {
+        let mut dict = SqliteDictionary::open_in_memory()?;
+        dict.update(
+            &[
+                syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+                syl![Bopomofo::SH, Bopomofo::TONE4],
+            ],
+            ("測試", 9318).into(),
+            9900,
+        )?;
+        assert_eq!(
+            vec![Phrase::new("測試", 9900)],
+            dict.lookup_phrase(&[
+                syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+                syl![Bopomofo::SH, Bopomofo::TONE4],
+            ])
+            .collect::<Vec<_>>()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn update_user_freq() -> Result<(), Box<dyn Error>> {
+        let mut dict = SqliteDictionary::open_in_memory()?;
+        let syllables = [
+            syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+            syl![Bopomofo::SH, Bopomofo::TONE4],
+        ];
+        dict.insert(&syllables, ("測試", 9318).into())?;
+        dict.update(&syllables, ("測試", 9318).into(), 9900)?;
+        assert_eq!(
+            vec![Phrase::new("測試", 9900)],
+            dict.lookup_phrase(&[
+                syl![Bopomofo::C, Bopomofo::E, Bopomofo::TONE4],
+                syl![Bopomofo::SH, Bopomofo::TONE4],
+            ])
+            .collect::<Vec<_>>()
+        );
+        Ok(())
     }
 }

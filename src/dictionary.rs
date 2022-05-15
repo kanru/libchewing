@@ -304,6 +304,13 @@ pub trait DictionaryMut {
         syllables: &[Syllable],
         phrase: Phrase,
     ) -> Result<(), DictionaryUpdateError>;
+
+    fn update(
+        &mut self,
+        syllables: &[Syllable],
+        phrase: Phrase,
+        user_freq: u32,
+    ) -> Result<(), DictionaryUpdateError>;
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -361,6 +368,15 @@ impl DictionaryMut for HashMap<Vec<Syllable>, Vec<Phrase>> {
             });
         }
         vec.push(phrase);
+        Ok(())
+    }
+
+    fn update(
+        &mut self,
+        _syllables: &[Syllable],
+        _phrase: Phrase,
+        _user_freq: u32,
+    ) -> Result<(), DictionaryUpdateError> {
         Ok(())
     }
 }
@@ -488,6 +504,20 @@ impl DictionaryMut for ChainedDictionary {
         for dict in &mut self.inner {
             if let Some(dict_mut) = dict.as_mut_dict() {
                 dict_mut.insert(syllables, phrase.clone())?;
+            }
+        }
+        Ok(())
+    }
+
+    fn update(
+        &mut self,
+        syllables: &[Syllable],
+        phrase: Phrase,
+        user_freq: u32,
+    ) -> Result<(), DictionaryUpdateError> {
+        for dict in &mut self.inner {
+            if let Some(dict_mut) = dict.as_mut_dict() {
+                dict_mut.update(syllables, phrase.clone(), user_freq)?;
             }
         }
         Ok(())

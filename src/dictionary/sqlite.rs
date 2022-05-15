@@ -258,10 +258,10 @@ impl Dictionary for SqliteDictionary {
             .prepare_cached(
                 "SELECT
                     phrase,
-                    freq
+                    max(freq, coalesce(user_freq, 0))
                 FROM dictionary_v1 LEFT JOIN userphrase_v2 ON userphrase_id = id
                 WHERE syllables = ?
-                ORDER BY sort_id ASC, freq DESC, phrase DESC",
+                ORDER BY sort_id ASC, max(freq, coalesce(user_freq, 0)) DESC, phrase DESC",
             )
             .expect("SQL error");
         Box::new(

@@ -152,8 +152,14 @@ static int CheckUserChoose(ChewingData *pgdata,
      * if there exist one phrase satisfied all selectStr then return 1, else return 0.
      * also store the phrase with highest freq
      */
+#ifdef HAVE_RUST
+    void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphrase_data, new_phoneSeq);
+    pUserPhraseData = &pgdata->userphrase_data;
+    if (iter == NULL)
+#else
     pUserPhraseData = UserGetPhraseFirst(pgdata, new_phoneSeq);
     if (pUserPhraseData == NULL)
+#endif
       goto end;
     p_phr->freq = -1;
     do {
@@ -184,8 +190,12 @@ static int CheckUserChoose(ChewingData *pgdata,
                 *pp_phr = p_phr;
             }
         }
+#ifdef HAVE_RUST
+    } while ((iter = UserGetPhraseNext(iter, &pgdata->userphrase_data)) != NULL);
+#else
     } while ((pUserPhraseData = UserGetPhraseNext(pgdata, new_phoneSeq)) != NULL);
     UserGetPhraseEnd(pgdata, new_phoneSeq);
+#endif
 
     if (p_phr->freq != -1)
         return 1;
@@ -355,8 +365,17 @@ static void FindInterval(ChewingData *pgdata, TreeDataType *ptd)
             puserphrase = pdictphrase = NULL;
             i_used_phrase = USED_PHRASE_NONE;
 
+#ifdef HAVE_RUST
+            void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphrase_data, new_phoneSeq);
+            if (iter == NULL) {
+                userphrase = NULL;
+            } else {
+                userphrase = &pgdata->userphrase_data;
+            }
+#else
             userphrase = UserGetPhraseFirst(pgdata, new_phoneSeq);
             UserGetPhraseEnd(pgdata, new_phoneSeq);
+#endif
 
             if (userphrase && CheckUserChoose(pgdata, new_phoneSeq, begin, end + 1,
                                               &p_phrase, pgdata->selectStr, pgdata->selectInterval, pgdata->nSelect)) {

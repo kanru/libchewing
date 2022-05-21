@@ -82,4 +82,32 @@ void *TreeFindPhrase(void *dict_ptr, int begin, int end, uint16_t *syllables_u16
 
 void *GetVocabNext(void *iter_ptr, struct Phrase *phrase_ptr);
 
+void *InitUserphrase(char *path);
+
+void TerminateUserphrase(void *ptr);
+
+void *UserGetPhraseFirst(void *ue_ptr, void *userphrase_data_ptr, uint16_t *syllables_u16_ptr);
+
+void *UserGetPhraseNext(void *iter_ptr, void *userphrase_data_ptr);
+
+uint8_t UserUpdatePhrase(void *ue_ptr, uint16_t *syllables_u16_ptr, char *phrase_str_ptr);
+
+bool UserRemovePhrase(void *ue_ptr, uint16_t *syllables_u16_ptr, char *phrase_str_ptr);
+
+void IncreaseLifeTime(void *ue_ptr);
+
+void UserUpdatePhraseBegin(void*);
+
+void UserGetPhraseEnd(void*, void*);
+
+void *UserEnumeratePhrase(void *ue_ptr);
+
+bool UserEnumerateHasNext(void *iter_ptr, unsigned int *phrase_len_ptr, unsigned int *bopomofo_len);
+
+int UserEnumerateGet(void *iter_ptr,
+                     char *phrase_buf,
+                     const unsigned int *_phrase_len_ptr,
+                     char *bopomofo_buf,
+                     const unsigned int *_bopomofo_len);
+
 #endif /* chewing_internal_bindings_h */

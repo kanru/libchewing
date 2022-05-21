@@ -245,7 +245,14 @@ CHEWING_API ChewingContext *chewing_new2(const char *syspath,
         goto error;
     }
 
+#ifdef HAVE_RUST
+    ctx->data->ue = InitUserphrase(userphrase_path);
+    if (ctx->data->ue == NULL) {
+        ret = 1;
+    }
+#else
     ret = InitUserphrase(ctx->data, userphrase_path);
+#endif
     free(userphrase_path);
 
     if (ret) {
@@ -311,6 +318,7 @@ CHEWING_API int chewing_Reset(ChewingContext *ctx)
     void *loggerData;
 #ifdef HAVE_RUST
     void *dict;
+    void *ue;
 #endif
 
     if (!ctx) {
@@ -325,8 +333,9 @@ CHEWING_API int chewing_Reset(ChewingContext *ctx)
     static_data = pgdata->static_data;
     logger = pgdata->logger;
     loggerData = pgdata->loggerData;
-    dict = pgdata->dict;
 #ifdef HAVE_RUST
+    dict = pgdata->dict;
+    ue = pgdata->ue;
     if (pgdata->bopomofoData.editorWithKeymap != 0) {
         FreePhoneticEditor(pgdata->bopomofoData.editorWithKeymap);
     }
@@ -336,9 +345,10 @@ CHEWING_API int chewing_Reset(ChewingContext *ctx)
     pgdata->static_data = static_data;
     pgdata->logger = logger;
     pgdata->loggerData = loggerData;
-    pgdata->dict = dict;
 
 #ifdef HAVE_RUST
+    pgdata->dict = dict;
+    pgdata->ue = ue;
     chewing_set_KBType(ctx, KB_DEFAULT);
 #else
     /* bopomofoData */
@@ -433,10 +443,11 @@ CHEWING_API void chewing_delete(ChewingContext *ctx)
             TerminatePinyin(ctx->data);
             TerminateEasySymbolTable(ctx->data);
             TerminateSymbolTable(ctx->data);
-            TerminateUserphrase(ctx->data);
 #ifdef HAVE_RUST
+            TerminateUserphrase(ctx->data->ue);
             TerminateDict(ctx->data->dict);
 #else
+            TerminateUserphrase(ctx->data);
             TerminateTree(ctx->data);
             TerminateDict(ctx->data);
 #endif
@@ -1524,7 +1535,11 @@ CHEWING_API int chewing_handle_Default(ChewingContext *ctx, int key)
     LOG_API("key = %d", key);
 
     /* Update lifetime */
+#ifdef HAVE_RUST
+    IncreaseLifeTime(ctx->data->ue);
+#else
     IncreaseLifeTime(ctx->data);
+#endif
 
     /* Skip the special key */
     if (key & 0xFF00) {
@@ -1754,7 +1769,11 @@ CHEWING_API int chewing_handle_CtrlNum(ChewingContext *ctx, int key)
 
                 copyStringFromPreeditBuf(pgdata, key_buf_cursor, newPhraseLen, addWordSeq, sizeof(addWordSeq));
 
+#ifdef HAVE_RUST
+                phraseState = UserUpdatePhrase(pgdata->ue, addPhoneSeq, addWordSeq);
+#else
                 phraseState = UserUpdatePhrase(pgdata, addPhoneSeq, addWordSeq);
+#endif
                 SetUpdatePhraseMsg(pgdata, addWordSeq, newPhraseLen, phraseState);
 
                 /* Clear the breakpoint between the New Phrase */
@@ -1771,7 +1790,11 @@ CHEWING_API int chewing_handle_CtrlNum(ChewingContext *ctx, int key)
 
                 copyStringFromPreeditBuf(pgdata, key_buf_cursor - newPhraseLen, newPhraseLen, addWordSeq, sizeof(addWordSeq));
 
+#ifdef HAVE_RUST
+                phraseState = UserUpdatePhrase(pgdata->ue, addPhoneSeq, addWordSeq);
+#else
                 phraseState = UserUpdatePhrase(pgdata, addPhoneSeq, addWordSeq);
+#endif
                 SetUpdatePhraseMsg(pgdata, addWordSeq, newPhraseLen, phraseState);
 
                 /* Clear the breakpoint between the New Phrase */
@@ -1935,6 +1958,9 @@ CHEWING_API int chewing_userphrase_enumerate(ChewingContext *ctx)
 {
     ChewingData *pgdata;
 
+#ifdef HAVE_RUST
+    ctx->data->static_data.userphrase_iter = UserEnumeratePhrase(ctx->data->ue);
+#else
 #if WITH_SQLITE3
     int ret;
 #endif
@@ -1957,6 +1983,7 @@ CHEWING_API int chewing_userphrase_enumerate(ChewingContext *ctx)
 #else
     pgdata->static_data.userphrase_enum = FindNextHash(pgdata, NULL);
 #endif
+#endif
     return 0;
 }
 
@@ -1964,6 +1991,9 @@ CHEWING_API int chewing_userphrase_has_next(ChewingContext *ctx, unsigned int *p
 {
     ChewingData *pgdata;
 
+#ifdef HAVE_RUST
+    return UserEnumerateHasNext(ctx->data->static_data.userphrase_iter, phrase_len, bopomofo_len);
+#else
 #if WITH_SQLITE3
     int ret;
 #endif
@@ -2002,6 +2032,8 @@ CHEWING_API int chewing_userphrase_has_next(ChewingContext *ctx, unsigned int *p
     }
     return 0;
 #endif
+#endif
+    return 0;
 }
 
 CHEWING_API int chewing_userphrase_get(ChewingContext *ctx,
@@ -2010,6 +2042,9 @@ CHEWING_API int chewing_userphrase_get(ChewingContext *ctx,
 {
     ChewingData *pgdata;
 
+#ifdef HAVE_RUST
+    return UserEnumerateGet(ctx->data->static_data.userphrase_iter, phrase_buf, phrase_len, bopomofo_buf, bopomofo_len);
+#else
 #if WITH_SQLITE3
     const char *phrase;
     int length;
@@ -2067,6 +2102,8 @@ CHEWING_API int chewing_userphrase_get(ChewingContext *ctx,
 
     return -1;
 #endif
+#endif
+    return -1;
 }
 
 CHEWING_API int chewing_userphrase_add(ChewingContext *ctx, const char *phrase_buf, const char *bopomofo_buf)
@@ -2100,7 +2137,11 @@ CHEWING_API int chewing_userphrase_add(ChewingContext *ctx, const char *phrase_b
         return 0;
     }
 
+#ifdef HAVE_RUST
+    ret = UserUpdatePhrase(pgdata->ue, phone_buf, phrase_buf);
+#else
     ret = UserUpdatePhrase(pgdata, phone_buf, phrase_buf);
+#endif
     free(phone_buf);
 
     if (ret == USER_UPDATE_FAIL) {
@@ -2133,7 +2174,11 @@ CHEWING_API int chewing_userphrase_remove(ChewingContext *ctx, const char *phras
         free(phone_buf);
         return 0;
     }
+#ifdef HAVE_RUST
+    ret = UserRemovePhrase(pgdata->ue, phone_buf, phrase_buf);
+#else
     ret = UserRemovePhrase(pgdata, phone_buf, phrase_buf);
+#endif
     free(phone_buf);
 
     return ret;
@@ -2145,7 +2190,7 @@ CHEWING_API int chewing_userphrase_lookup(ChewingContext *ctx, const char *phras
     ssize_t phone_len;
     uint16_t *phone_buf = 0;
     int ret;
-    UserPhraseData *user_phrase_data;
+    UserPhraseData *user_phrase_data = NULL;
 
     if (!ctx || !bopomofo_buf) {
         return 0;
@@ -2164,6 +2209,16 @@ CHEWING_API int chewing_userphrase_lookup(ChewingContext *ctx, const char *phras
         return 0;
     }
 
+#ifdef HAVE_RUST
+    void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphrase_data, phone_buf);
+    while (iter) {
+        user_phrase_data = &pgdata->userphrase_data;
+        if (phrase_buf == NULL || strcmp(phrase_buf, pgdata->userphrase_data.wordSeq) == 0)
+            break;
+        user_phrase_data = NULL;
+        iter = UserGetPhraseNext(iter, &pgdata->userphrase_data);
+    }
+#else
     user_phrase_data = UserGetPhraseFirst(pgdata, phone_buf);
     while (user_phrase_data) {
         if (phrase_buf == NULL || strcmp(phrase_buf, user_phrase_data->wordSeq) == 0)
@@ -2171,6 +2226,7 @@ CHEWING_API int chewing_userphrase_lookup(ChewingContext *ctx, const char *phras
         user_phrase_data = UserGetPhraseNext(pgdata, phone_buf);
     }
     UserGetPhraseEnd(pgdata, phone_buf);
+#endif
     free(phone_buf);
     return user_phrase_data == NULL ? 0 : 1;
 }

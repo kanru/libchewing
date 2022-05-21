@@ -113,8 +113,12 @@ extern const SqlStmtUserphrase SQL_STMT_USERPHRASE[STMT_USERPHRASE_COUNT];
 
 struct ChewingData;
 
+#ifndef HAVE_RUST
+
 int InitUserphrase(struct ChewingData *pgdata, const char *path);
 void TerminateUserphrase(struct ChewingData *pgdata);
+
+#endif
 
 /* *INDENT-OFF* */
 #endif

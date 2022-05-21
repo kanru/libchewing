@@ -257,6 +257,10 @@ impl Dictionary for TrieDictionary {
         )
     }
 
+    fn entries(&self) -> super::DictEntries {
+        todo!();
+    }
+
     fn about(&self) -> DictionaryInfo {
         self.info.clone()
     }

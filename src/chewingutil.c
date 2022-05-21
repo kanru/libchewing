@@ -610,7 +610,11 @@ void AutoLearnPhrase(ChewingData *pgdata)
              * connected to current phrase. We store it as
              * userphrase here.
              */
+#ifdef HAVE_RUST
+            UserUpdatePhrase(pgdata->ue, bufPhoneSeq, bufWordSeq);
+#else
             UserUpdatePhrase(pgdata, bufPhoneSeq, bufWordSeq);
+#endif
             prev_pos = 0;
             pending_pos = 0;
         }
@@ -635,22 +639,36 @@ void AutoLearnPhrase(ChewingData *pgdata)
                  * Clean pending phrase because we cannot join
                  * it with current phrase.
                  */
+#ifdef HAVE_RUST
+                UserUpdatePhrase(pgdata->ue, bufPhoneSeq, bufWordSeq);
+#else
                 UserUpdatePhrase(pgdata, bufPhoneSeq, bufWordSeq);
+#endif
                 prev_pos = 0;
                 pending_pos = 0;
             }
             memcpy(bufPhoneSeq, &pgdata->phoneSeq[from], sizeof(uint16_t) * len);
             bufPhoneSeq[len] = (uint16_t) 0;
             copyStringFromPreeditBuf(pgdata, fromPreeditBuf, len, bufWordSeq, sizeof(bufWordSeq));
+#ifdef HAVE_RUST
+            UserUpdatePhrase(pgdata->ue, bufPhoneSeq, bufWordSeq);
+#else
             UserUpdatePhrase(pgdata, bufPhoneSeq, bufWordSeq);
+#endif
         }
     }
 
     if (pending_pos) {
-        UserUpdatePhrase(pgdata, bufPhoneSeq, bufWordSeq);
+#ifdef HAVE_RUST
+            UserUpdatePhrase(pgdata->ue, bufPhoneSeq, bufWordSeq);
+#else
+            UserUpdatePhrase(pgdata, bufPhoneSeq, bufWordSeq);
+#endif
     }
 
+#ifndef HAVE_RUST
     UserUpdatePhraseEnd(pgdata);
+#endif
 }
 
 int AddChi(uint16_t phone, uint16_t phoneAlt, ChewingData *pgdata)

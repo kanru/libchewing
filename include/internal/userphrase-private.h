@@ -23,6 +23,7 @@
 #    include <stdint.h>
 #endif
 
+
 #if WITH_SQLITE3
 #    define DB_NAME	"chewing.sqlite3"
 #else
@@ -40,8 +41,24 @@
 #define USER_UPDATE_MODIFY (2)
 #define USER_UPDATE_IGNORE (8)
 
-/* Forward declaration */
+#define MAX_PHRASE_LEN 11
+#define MAX_PHONE_SEQ_LEN 50
+#define MAX_UTF8_SIZE 4
+
+
 struct ChewingData;
+typedef struct UserPhraseData {
+    uint16_t phoneSeq[MAX_PHONE_SEQ_LEN];
+    char wordSeq[MAX_PHRASE_LEN * MAX_UTF8_SIZE + 1];
+    int userfreq;
+    int recentTime;
+    int origfreq;               /* the initial frequency of this phrase */
+    int maxfreq;                /* the maximum frequency of the phrase of the same pid */
+} UserPhraseData;
+
+#ifndef HAVE_RUST
+
+/* Forward declaration */
 
 typedef struct UserPhraseData {
     uint16_t *phoneSeq;
@@ -51,6 +68,7 @@ typedef struct UserPhraseData {
     int origfreq;               /* the initial frequency of this phrase */
     int maxfreq;                /* the maximum frequency of the phrase of the same pid */
 } UserPhraseData;
+
 
 void UserUpdatePhraseBegin(struct ChewingData *pgdata);
 
@@ -92,7 +110,9 @@ void UserGetPhraseEnd(struct ChewingData *pgdata, const uint16_t phoneSeq[]);
 
 void IncreaseLifeTime(struct ChewingData *pgdata);
 
+#endif
 char *GetDefaultUserPhrasePath(struct ChewingData *pgdata);
+
 
 /* *INDENT-OFF* */
 #endif

@@ -140,7 +140,11 @@ static void SetAvailInfo(ChewingData *pgdata, int begin, int end)
         } else {
             memcpy(userPhoneSeq, &phoneSeq[head_tmp], sizeof(uint16_t) * (diff + 1));
             userPhoneSeq[diff + 1] = 0;
+#ifdef HAVE_RUST
+            if (UserGetPhraseFirst(pgdata->ue, &pgdata->userphrase_data, userPhoneSeq)) {
+#else
             if (UserGetPhraseFirst(pgdata, userPhoneSeq)) {
+#endif
                 /* save it! */
                 pai->avail[pai->nAvail].len = diff + 1;
                 pai->avail[pai->nAvail].id = NULL;
@@ -149,7 +153,10 @@ static void SetAvailInfo(ChewingData *pgdata, int begin, int end)
                 pai->avail[pai->nAvail].len = 0;
                 pai->avail[pai->nAvail].id = NULL;
             }
+#ifdef HAVE_RUST
+#else
             UserGetPhraseEnd(pgdata, userPhoneSeq);
+#endif
         }
 
         if (pgdata->config.bPhraseChoiceRearward) {
@@ -362,7 +369,16 @@ static void SetChoiceInfo(ChewingData *pgdata)
 
         memcpy(userPhoneSeq, &phoneSeq[cursor], sizeof(uint16_t) * len);
         userPhoneSeq[len] = 0;
+#ifdef HAVE_RUST
+        void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphrase_data, userPhoneSeq);
+        if (iter == NULL) {
+            pUserPhraseData = NULL;
+        } else {
+            pUserPhraseData = &pgdata->userphrase_data;
+        }
+#else
         pUserPhraseData = UserGetPhraseFirst(pgdata, userPhoneSeq);
+#endif
         if (pUserPhraseData) {
             do {
                 /* check if the phrase is already in the choice list */
@@ -371,9 +387,14 @@ static void SetChoiceInfo(ChewingData *pgdata)
                 /* otherwise store it */
                 ueStrNCpy(pci->totalChoiceStr[pci->nTotalChoice], pUserPhraseData->wordSeq, len, 1);
                 pci->nTotalChoice++;
+#ifdef HAVE_RUST
+            } while ((iter = UserGetPhraseNext(iter, &pgdata->userphrase_data)) != NULL);
+        }
+#else
             } while ((pUserPhraseData = UserGetPhraseNext(pgdata, userPhoneSeq)) != NULL);
         }
         UserGetPhraseEnd(pgdata, userPhoneSeq);
+#endif
 
     }
 

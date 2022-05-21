@@ -47,6 +47,9 @@ pub extern "C" fn InitDict(prefix: *mut c_char) -> *mut c_void {
 
 #[no_mangle]
 pub extern "C" fn TerminateDict(dict_ptr: *mut c_void) {
+    if dict_ptr.is_null() {
+        return;
+    }
     let dict_ptr: *mut ChainedDictionary = dict_ptr.cast();
     unsafe { Box::from_raw(dict_ptr) };
 }

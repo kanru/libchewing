@@ -7,8 +7,8 @@ use thiserror::Error;
 use crate::zhuyin::{IntoSyllablesBytes, Syllable};
 
 use super::{
-    BuildDictionaryError, Dictionary, DictionaryBuilder, DictionaryInfo, DictionaryMut,
-    DictionaryUpdateError, Phrase, Phrases,
+    BuildDictionaryError, DictEntries, Dictionary, DictionaryBuilder, DictionaryInfo,
+    DictionaryMut, DictionaryUpdateError, Phrase, Phrases,
 };
 
 #[derive(Debug, Error, Diagnostic)]
@@ -138,7 +138,7 @@ impl SqliteDictionary {
         if !has_userphrase_v1 || migrated {
             // Don't need to migrate
             conn.execute(
-                "INSERT INTO migration_v1 (name) VALUES ('migrate_from_userphrase_v1')",
+                "INSERT OR IGNORE INTO migration_v1 (name) VALUES ('migrate_from_userphrase_v1')",
                 [],
             )?;
             return Ok(());
@@ -281,6 +281,40 @@ impl Dictionary for SqliteDictionary {
         )
     }
 
+    fn entries(&self) -> DictEntries {
+        let mut stmt = self
+            .conn
+            .prepare_cached(
+                "SELECT syllables, phrase, max(freq, coalesce(user_freq, 0)), time
+                FROM dictionary_v1 LEFT JOIN userphrase_v2 ON userphrase_id = id",
+            )
+            .expect("SQL error");
+        Box::new(
+            stmt.query_map([], |row| {
+                let syllables_bytes: Vec<u8> = row.get(0).unwrap();
+                let syllables = syllables_bytes
+                    .chunks_exact(2)
+                    .map(|bytes| {
+                        let mut u16_bytes = [0; 2];
+                        u16_bytes.copy_from_slice(bytes);
+                        let syl_u16 = u16::from_le_bytes(u16_bytes);
+                        Syllable::try_from(syl_u16).unwrap()
+                    })
+                    .collect::<Vec<_>>();
+                let mut phrase = Phrase::new::<String>(row.get(1).unwrap(), row.get(2).unwrap());
+                let time: Option<u64> = row.get(3).unwrap();
+                if let Some(last_used) = time {
+                    phrase = phrase.with_time(last_used);
+                }
+                Ok((syllables, phrase))
+            })
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect::<Vec<_>>()
+            .into_iter(),
+        )
+    }
+
     fn about(&self) -> DictionaryInfo {
         self.info.clone()
     }
@@ -366,6 +400,19 @@ impl DictionaryMut for SqliteDictionary {
             }
         }
         tx.commit()?;
+        Ok(())
+    }
+
+    fn remove(
+        &mut self,
+        syllables: &[Syllable],
+        phrase_str: &str,
+    ) -> Result<(), DictionaryUpdateError> {
+        let syllables_bytes = syllables.into_syllables_bytes();
+        let mut stmt = self
+            .conn
+            .prepare_cached("DELETE FROM dictionary_v1 WHERE syllables = ? AND phrase = ?")?;
+        stmt.execute(params![syllables_bytes, phrase_str])?;
         Ok(())
     }
 }

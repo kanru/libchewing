@@ -20,6 +20,8 @@
 #include "private.h"
 #include "key2pho-private.h"
 
+#ifndef HAVE_RUST
+
 static int UserBindPhone(ChewingData *pgdata, int index, const uint16_t phoneSeq[], int len)
 {
     int i;
@@ -478,3 +480,5 @@ void IncreaseLifeTime(ChewingData *pgdata)
 {
     ++pgdata->static_data.new_lifetime;
 }
+
+#endif

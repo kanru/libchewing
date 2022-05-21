@@ -149,7 +149,7 @@ impl Phrase {
     ///
     /// The time is a counter increased by one for each keystroke.
     pub fn last_used(&self) -> Option<u64> {
-        self.last_used()
+        self.last_used
     }
     /// Returns the inner str of the phrase.
     ///
@@ -251,6 +251,8 @@ impl Display for Phrase {
 /// ```
 pub type Phrases<'a> = Box<dyn Iterator<Item = Phrase> + 'a>;
 
+pub type DictEntries<'a> = Box<dyn Iterator<Item = (Vec<Syllable>, Phrase)> + 'a>;
+
 /// An interface for looking up dictionaries.
 ///
 /// This is the main dictionary trait. For more about the concept of
@@ -291,6 +293,8 @@ pub trait Dictionary {
     /// Returns an iterator to all phrases matched by the syllables, if any. The
     /// result should use a stable order each time for the same input.
     fn lookup_phrase(&self, syllables: &[Syllable]) -> Phrases;
+    /// Returns an iterator to all phrases in the dictionary.
+    fn entries(&self) -> DictEntries;
     /// Returns information about the dictionary instance.
     fn about(&self) -> DictionaryInfo;
     /// Returns a mutable reference to the dictionary if the underlying
@@ -334,6 +338,12 @@ pub trait DictionaryMut {
         user_freq: u32,
         time: u64,
     ) -> Result<(), DictionaryUpdateError>;
+
+    fn remove(
+        &mut self,
+        syllables: &[Syllable],
+        phrase_str: &str,
+    ) -> Result<(), DictionaryUpdateError>;
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -369,6 +379,14 @@ impl Dictionary for HashMap<Vec<Syllable>, Vec<Phrase>> {
             .unwrap_or_else(|| Box::new(std::iter::empty()))
     }
 
+    fn entries(&self) -> DictEntries {
+        Box::new(
+            self.iter()
+                .map(|(k, v)| v.iter().map(|phrase| (k.clone(), phrase.clone())))
+                .flatten(),
+        )
+    }
+
     fn about(&self) -> DictionaryInfo {
         Default::default()
     }
@@ -401,6 +419,20 @@ impl DictionaryMut for HashMap<Vec<Syllable>, Vec<Phrase>> {
         _user_freq: u32,
         _time: u64,
     ) -> Result<(), DictionaryUpdateError> {
+        Ok(())
+    }
+
+    fn remove(
+        &mut self,
+        syllables: &[Syllable],
+        phrase_str: &str,
+    ) -> Result<(), DictionaryUpdateError> {
+        let vec = self.entry(syllables.to_vec()).or_default();
+        *vec = vec
+            .iter()
+            .cloned()
+            .filter(|p| p.as_str() != phrase_str)
+            .collect::<Vec<_>>();
         Ok(())
     }
 }
@@ -507,6 +539,10 @@ impl Dictionary for ChainedDictionary {
             )
     }
 
+    fn entries(&self) -> DictEntries {
+        Box::new(std::iter::empty())
+    }
+
     fn about(&self) -> DictionaryInfo {
         DictionaryInfo {
             name: Some("Built-in ChainedDictionary".to_string()),
@@ -543,6 +579,19 @@ impl DictionaryMut for ChainedDictionary {
         for dict in &mut self.inner {
             if let Some(dict_mut) = dict.as_mut_dict() {
                 dict_mut.update(syllables, phrase.clone(), user_freq, time)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn remove(
+        &mut self,
+        syllables: &[Syllable],
+        phrase_str: &str,
+    ) -> Result<(), DictionaryUpdateError> {
+        for dict in &mut self.inner {
+            if let Some(dict_mut) = dict.as_mut_dict() {
+                dict_mut.remove(syllables, phrase_str)?;
             }
         }
         Ok(())

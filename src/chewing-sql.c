@@ -22,6 +22,8 @@
 #include "sqlite3.h"
 #include "userphrase-private.h"
 
+#ifndef HAVE_RUST
+
 const SqlStmtUserphrase SQL_STMT_USERPHRASE[STMT_USERPHRASE_COUNT] = {
     {
      "SELECT length, phrase, "
@@ -497,3 +499,5 @@ void TerminateUserphrase(ChewingData *pgdata)
     assert(SQLITE_OK == ret);
     pgdata->static_data.db = NULL;
 }
+
+#endif

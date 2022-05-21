@@ -15,6 +15,7 @@ pub struct EstimateError {
 
 pub trait UserFreqEstimate {
     fn tick(&mut self) -> Result<(), EstimateError>;
+    fn now(&self) -> Result<u64, EstimateError>;
     fn estimate(&self, phrase: &Phrase, orig_freq: u32, max_freq: u32) -> u32;
 }
 
@@ -83,6 +84,10 @@ impl UserFreqEstimate for SqliteUserFreqEstimate {
         Ok(())
     }
 
+    fn now(&self) -> Result<u64, EstimateError> {
+        Ok(self.lifetime)
+    }
+
     fn estimate(&self, phrase: &Phrase, orig_freq: u32, max_freq: u32) -> u32 {
         let delta_time = self.lifetime - phrase.last_used().unwrap_or(self.lifetime);
 
@@ -93,7 +98,7 @@ impl UserFreqEstimate for SqliteUserFreqEstimate {
                 ((max_freq - orig_freq) / 5 + 1).max(SHORT_INCREASE_FREQ)
             };
             return (phrase.freq() + delta).min(MAX_USER_FREQ);
-        } else if (delta_time < 50000) {
+        } else if delta_time < 50000 {
             let delta = if phrase.freq() >= max_freq {
                 ((max_freq - orig_freq) / 10 + 1).min(MEDIUM_INCREASE_FREQ)
             } else {

@@ -234,6 +234,9 @@ typedef struct ChewingStaticData {
     struct keymap *hanyuFinalsMap;
     int HANYU_INITIALS;
     int HANYU_FINALS;
+#ifdef HAVE_RUST
+    void *userphrase_iter;
+#endif
 } ChewingStaticData;
 
 typedef enum Category {
@@ -281,7 +284,7 @@ typedef struct ChewingData {
     /* Symbol Key buffer */
     char symbolKeyBuf[MAX_PHONE_SEQ_LEN];
 
-#if WITH_SQLITE3
+#if WITH_SQLITE3 || HAVE_RUST
     UserPhraseData userphrase_data;
 #else
     struct HASH_ITEM *prev_userphrase;
@@ -293,6 +296,7 @@ typedef struct ChewingData {
 
 #if HAVE_RUST
     void *dict;
+    void *ue;
 #endif
 } ChewingData;
 

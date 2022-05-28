@@ -10,12 +10,12 @@ use chewing::{
     },
     zhuyin::{Bopomofo, Syllable},
 };
-use chrono::Utc;
 use clap::{Arg, Command};
 use miette::{
     bail, Context, Diagnostic, IntoDiagnostic, MietteSpanContents, Result, SourceCode, SourceSpan,
 };
 use thiserror::Error;
+use time::OffsetDateTime;
 
 #[derive(Error, Diagnostic, Debug)]
 #[error("Parsing tsi.src failed")]
@@ -69,7 +69,8 @@ impl SourceCode for NamedLine {
 }
 
 fn main() -> Result<()> {
-    let timestamp = Utc::today().format("%Y-%m-%d").to_string();
+    let today = OffsetDateTime::now_utc().date();
+    let timestamp = today.to_string();
     let m = Command::new("init_database")
         .about("This program creates a new chewing phrase dictionary file.")
         .arg(

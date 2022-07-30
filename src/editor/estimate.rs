@@ -97,17 +97,17 @@ impl UserFreqEstimate for SqliteUserFreqEstimate {
             } else {
                 ((max_freq - orig_freq) / 5 + 1).max(SHORT_INCREASE_FREQ)
             };
-            return (phrase.freq() + delta).min(MAX_USER_FREQ);
+            (phrase.freq() + delta).min(MAX_USER_FREQ)
         } else if delta_time < 50000 {
             let delta = if phrase.freq() >= max_freq {
                 ((max_freq - orig_freq) / 10 + 1).min(MEDIUM_INCREASE_FREQ)
             } else {
                 ((max_freq - orig_freq) / 10 + 1).max(MEDIUM_INCREASE_FREQ)
             };
-            return (phrase.freq() + delta).min(MAX_USER_FREQ);
+            (phrase.freq() + delta).min(MAX_USER_FREQ)
         } else {
             let delta = ((phrase.freq() - orig_freq) / 5).max(LONG_DECREASE_FREQ);
-            return (phrase.freq() - delta).max(orig_freq);
+            (phrase.freq() - delta).max(orig_freq)
         }
     }
 }

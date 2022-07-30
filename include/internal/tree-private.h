@@ -24,8 +24,8 @@ int IsIntersect(IntervalType in1, IntervalType in2);
 
 #ifndef HAVE_RUST
 const TreeType *TreeFindPhrase(ChewingData *pgdata, int begin, int end, const uint16_t *phoneSeq);
-#endif
 void TreeChildRange(ChewingData *pgdata, const TreeType *parent);
+#endif
 
 /* *INDENT-OFF* */
 #endif

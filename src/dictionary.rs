@@ -382,8 +382,7 @@ impl Dictionary for HashMap<Vec<Syllable>, Vec<Phrase>> {
     fn entries(&self) -> DictEntries {
         Box::new(
             self.iter()
-                .map(|(k, v)| v.iter().map(|phrase| (k.clone(), phrase.clone())))
-                .flatten(),
+                .flat_map(|(k, v)| v.iter().map(|phrase| (k.clone(), phrase.clone()))),
         )
     }
 

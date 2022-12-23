@@ -13,7 +13,6 @@ use chewing::{
 };
 use clap::{Arg, Command};
 use thiserror::Error;
-use time::OffsetDateTime;
 
 #[derive(Error, Debug)]
 #[error("parsing failed at line {line_num}")]
@@ -37,8 +36,6 @@ impl<T> IntoParseError<T> for Result<T> {
 }
 
 fn main() -> Result<()> {
-    let today = OffsetDateTime::now_utc().date();
-    let timestamp = today.to_string();
     let m = Command::new("init_database")
         .about("This program creates a new chewing phrase dictionary file.")
         .arg(
@@ -92,10 +89,9 @@ fn main() -> Result<()> {
         license: license.to_owned().into(),
         version: version.to_owned().into(),
         software: format!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")).into(),
-        created_date: timestamp.to_owned().into(),
     })?;
 
-    let tsi = File::open(&tsi_src)?;
+    let tsi = File::open(tsi_src)?;
     let reader = BufReader::new(tsi);
     for (line_num, line) in reader.lines().enumerate() {
         let mut syllables = vec![];

@@ -63,10 +63,6 @@ pub struct DictionaryInfo {
     ///
     /// It's recommended to use the [SPDX license identifier](https://spdx.org/licenses/).
     pub license: Option<String>,
-    /// The date the dictionary was created
-    ///
-    /// It's recommended to use the ISO-8601 format, YYYY-MM-DD.
-    pub created_date: Option<String>,
     /// The version of the dictionary.
     ///
     /// It's recommended to use the commit hash or revision if the dictionary is

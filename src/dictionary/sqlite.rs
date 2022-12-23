@@ -226,7 +226,6 @@ impl SqliteDictionary {
                 'name',
                 'copyright',
                 'license',
-                'created_date',
                 'version',
                 'software'
             )",
@@ -239,7 +238,6 @@ impl SqliteDictionary {
                 "name" => info.name = Some(value),
                 "copyright" => info.copyright = Some(value),
                 "license" => info.license = Some(value),
-                "created_date" => info.created_date = Some(value),
                 "version" => info.version = Some(value),
                 "software" => info.software = Some(value),
                 _ => (),
@@ -458,9 +456,6 @@ impl DictionaryBuilder for SqliteDictionaryBuilder {
             }
             if let Some(license) = info.license {
                 stmt.execute(["license", &license])?;
-            }
-            if let Some(created_date) = info.created_date {
-                stmt.execute(["created_date", &created_date])?;
             }
             if let Some(version) = info.version {
                 stmt.execute(["version", &version])?;

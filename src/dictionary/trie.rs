@@ -26,7 +26,6 @@ const INFO: ChunkId = ChunkId { value: *b"INFO" };
 const INAM: ChunkId = ChunkId { value: *b"INAM" };
 const ICOP: ChunkId = ChunkId { value: *b"ICOP" };
 const ILIC: ChunkId = ChunkId { value: *b"ILIC" };
-const ICRD: ChunkId = ChunkId { value: *b"ICRD" };
 const IREV: ChunkId = ChunkId { value: *b"IREV" };
 const ISFT: ChunkId = ChunkId { value: *b"ISFT" };
 
@@ -184,14 +183,14 @@ impl TrieDictionary {
 
         for chunk in list_chunk.iter(&mut stream) {
             match chunk.id() {
-                INAM | ICOP | ILIC | ICRD | IREV | ISFT => chunks.push((chunk.id(), chunk)),
+                INAM | ICOP | ILIC | IREV | ISFT => chunks.push((chunk.id(), chunk)),
                 _ => (),
             }
         }
 
         for (id, chunk) in chunks {
             let content = match id {
-                INAM | ICOP | ILIC | ICRD | IREV | ISFT => Some(
+                INAM | ICOP | ILIC | IREV | ISFT => Some(
                     CString::new(chunk.read_contents(&mut stream)?)?
                         .into_string()
                         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?,
@@ -202,7 +201,6 @@ impl TrieDictionary {
                 INAM => info.name = content,
                 ICOP => info.copyright = content,
                 ILIC => info.license = content,
-                ICRD => info.created_date = content,
                 IREV => info.version = content,
                 ISFT => info.software = content,
                 _ => (),
@@ -402,7 +400,6 @@ impl Dictionary for TrieDictionary {
 /// - **INAM**: The name of the file
 /// - **ICOP**: Copyright information about the file
 /// - **ILIC**: License information about the file
-/// - **ICRD**: The date the file was created (ISO-8601 format, YYYY-MM-DD)
 /// - **IREV**: The version of the file
 /// - **ISFT**: The name of the software package used to create the file
 ///
@@ -741,12 +738,6 @@ impl TrieDictionaryBuilder {
             info_chunks.push(ChunkContents::Data(
                 ILIC,
                 CString::new(license.as_bytes())?.into_bytes(),
-            ))
-        }
-        if let Some(created_date) = &self.info.created_date {
-            info_chunks.push(ChunkContents::Data(
-                ICRD,
-                CString::new(created_date.as_bytes())?.into_bytes(),
             ))
         }
         if let Some(version) = &self.info.version {
@@ -1212,7 +1203,6 @@ mod tests {
             name: Some("name".into()),
             copyright: Some("copyright".into()),
             license: Some("license".into()),
-            created_date: Some("created_date".into()),
             version: Some("version".into()),
             software: Some("software".into()),
         };
@@ -1227,7 +1217,6 @@ mod tests {
         assert_eq!("name", info.name.unwrap());
         assert_eq!("copyright", info.copyright.unwrap());
         assert_eq!("license", info.license.unwrap());
-        assert_eq!("created_date", info.created_date.unwrap());
         assert_eq!("version", info.version.unwrap());
         assert_eq!("software", info.software.unwrap());
     }

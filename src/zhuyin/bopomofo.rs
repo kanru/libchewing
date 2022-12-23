@@ -1,6 +1,5 @@
 use std::fmt::{Display, Write};
 
-use miette::Diagnostic;
 use thiserror::Error;
 
 /// The category of the phonetic symbols
@@ -169,8 +168,7 @@ impl Bopomofo {
     }
 }
 
-#[derive(Error, Diagnostic, Debug)]
-#[diagnostic(code(chewing::bopomofo_parse_error))]
+#[derive(Error, Debug)]
 pub enum ParseBopomofoError {
     #[error("unknown bopomofo symbol")]
     Unknown,

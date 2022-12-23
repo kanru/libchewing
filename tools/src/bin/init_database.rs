@@ -4,6 +4,7 @@ use std::{
     path::Path,
 };
 
+use anyhow::{bail, Context, Result};
 use chewing::{
     dictionary::{
         DictionaryBuilder, DictionaryInfo, SqliteDictionaryBuilder, TrieDictionaryBuilder,
@@ -11,60 +12,27 @@ use chewing::{
     zhuyin::{Bopomofo, Syllable},
 };
 use clap::{Arg, Command};
-use miette::{
-    bail, Context, Diagnostic, IntoDiagnostic, MietteSpanContents, Result, SourceCode, SourceSpan,
-};
 use thiserror::Error;
 use time::OffsetDateTime;
 
-#[derive(Error, Diagnostic, Debug)]
-#[error("Parsing tsi.src failed")]
-#[diagnostic(help("the format should be <phrase> <frequency> <bopomofo syllables>"))]
+#[derive(Error, Debug)]
+#[error("parsing failed at line {line_num}")]
 struct ParseError {
-    #[source_code]
-    src: NamedLine,
-
-    #[label("here")]
-    err_span: SourceSpan,
-
-    #[source]
-    source: Box<dyn std::error::Error + Send + Sync>,
-}
-
-#[derive(Debug)]
-struct NamedLine {
-    name: String,
-    src: String,
-    line: usize,
+    line_num: usize,
     column: usize,
+    #[source]
+    source: anyhow::Error,
 }
 
-impl NamedLine {
-    fn new(name: String, src: String, line: usize, column: usize) -> NamedLine {
-        NamedLine {
-            name,
-            src,
-            line,
-            column,
-        }
-    }
+trait IntoParseError<T> {
+    fn parse_error(self, line_num: usize, column: usize) -> std::result::Result<T, ParseError>;
 }
 
-impl SourceCode for NamedLine {
-    fn read_span<'a>(
-        &'a self,
-        _span: &SourceSpan,
-        _context_lines_before: usize,
-        _context_lines_after: usize,
-    ) -> Result<Box<dyn miette::SpanContents<'a> + 'a>, miette::MietteError> {
-        Ok(Box::new(MietteSpanContents::new_named(
-            self.name.clone(),
-            self.src.as_bytes(),
-            (0..self.src.as_bytes().len()).into(),
-            self.line,
-            self.column,
-            1,
-        )))
+impl<T> IntoParseError<T> for Result<T> {
+    fn parse_error(self, line_num: usize, column: usize) -> std::result::Result<T, ParseError> {
+        self.map_err(|source| ParseError {
+            line_num, column, source
+        })
     }
 }
 
@@ -133,23 +101,19 @@ fn main() -> Result<()> {
         created_date: timestamp.into(),
     })?;
 
-    let tsi = File::open(&tsi_src).into_diagnostic()?;
+    let tsi = File::open(&tsi_src)?;
     let reader = BufReader::new(tsi);
     for (line_num, line) in reader.lines().enumerate() {
         let mut syllables = vec![];
-        let line = line.into_diagnostic()?;
+        let line = line?;
         let phrase = line.split_ascii_whitespace().next().unwrap();
         let freq: u32 = line
             .split_ascii_whitespace()
             .nth(1)
             .unwrap()
             .parse()
-            .map_err(|err| ParseError {
-                src: NamedLine::new(tsi_src.clone(), line.to_string(), line_num, 0),
-                err_span: 0.into(),
-                source: Box::new(err),
-            })
-            .wrap_err("Unable to parse frequency")?;
+            .context("unable to parse frequency")
+            .parse_error(line_num, 0)?;
         for syllable_str in line.split_ascii_whitespace().skip(2) {
             let mut syllable_builder = Syllable::builder();
             if syllable_str.starts_with('#') {
@@ -157,32 +121,17 @@ fn main() -> Result<()> {
             }
             for c in syllable_str.chars() {
                 syllable_builder =
-                    syllable_builder.insert(Bopomofo::try_from(c).map_err(|err| ParseError {
-                        src: NamedLine::new(tsi_src.clone(), line.to_string(), line_num, 0),
-                        err_span: 0.into(),
-                        source: Box::new(err),
-                    })?);
+                    syllable_builder.insert(Bopomofo::try_from(c)?);
             }
             syllables.push(syllable_builder.build());
         }
         builder
-            .insert(&syllables, (phrase, freq).into())
-            .map_err(|err| ParseError {
-                src: NamedLine {
-                    name: tsi_src.clone(),
-                    src: line.clone(),
-                    line: line_num,
-                    column: 0,
-                },
-                err_span: 0.into(),
-                source: err.into(),
-            })?;
+            .insert(&syllables, (phrase, freq).into())?;
     }
     let path: &Path = output.as_ref();
     if path.exists() {
         fs::remove_file(path)
-            .into_diagnostic()
-            .wrap_err("Unable to overwrite output")?;
+            .context("unable to overwrite output")?;
     }
     builder.build(path)?;
 

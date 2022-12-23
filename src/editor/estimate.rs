@@ -1,14 +1,12 @@
 use std::path::Path;
 
-use miette::Diagnostic;
 use rusqlite::Connection;
 use thiserror::Error;
 
 use crate::dictionary::Phrase;
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug)]
 #[error("update estimate error")]
-#[diagnostic(code(chewing::editor::update_estimate_error))]
 pub struct EstimateError {
     source: Box<dyn std::error::Error>,
 }

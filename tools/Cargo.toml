@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 chewing = { version = "0.5.1-alpha.1", path = ".." }
-thiserror = "1.0.31"
-miette = { version = "4.7.0", features = ["fancy"] }
+thiserror = "1.0.0"
+anyhow = "1.0.0"
 clap = "3.1.16"
 time = "0.3.9"

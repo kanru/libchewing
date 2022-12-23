@@ -8,7 +8,6 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use miette::Diagnostic;
 use thiserror::Error;
 
 use crate::zhuyin::Syllable;
@@ -22,18 +21,16 @@ mod sqlite;
 mod trie;
 
 /// The error type which is returned from updating a dictionary.
-#[derive(Error, Diagnostic, Debug)]
+#[derive(Error, Debug)]
 #[error("update dictionary failed")]
-#[diagnostic(code(chewing::dictionary_update_error))]
 pub struct DictionaryUpdateError {
     #[from]
     pub source: Box<dyn std::error::Error + Send + Sync>,
 }
 
 /// The error type which is returned from building or updating a dictionary.
-#[derive(Error, Diagnostic, Debug)]
+#[derive(Error, Debug)]
 #[error("found duplicated phrases")]
-#[diagnostic(code(chewing::duplicate_phrase_error))]
 pub struct DuplicatePhraseError;
 
 /// A collection of metadata of a dictionary.
@@ -346,10 +343,10 @@ pub trait DictionaryMut {
     ) -> Result<(), DictionaryUpdateError>;
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug)]
 #[error("build dictionary error")]
-#[diagnostic(code(chewing::build_dictionary_error))]
 pub struct BuildDictionaryError {
+    #[from]
     source: Box<dyn std::error::Error + Send + Sync>,
 }
 

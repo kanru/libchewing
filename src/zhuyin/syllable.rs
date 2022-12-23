@@ -1,6 +1,5 @@
 use std::fmt::{Display, Write};
 
-use miette::Diagnostic;
 use thiserror::Error;
 
 use super::{Bopomofo, BopomofoKind};
@@ -255,9 +254,8 @@ impl SyllableBuilder {
         self.syllable
     }
 }
-#[derive(Error, Diagnostic, Debug)]
+#[derive(Error, Debug)]
 #[error("syllable decode error: {msg}")]
-#[diagnostic(code(chewing::syllable_decode_error))]
 pub struct DecodeSyllableError {
     msg: String,
     source: Box<dyn std::error::Error>,

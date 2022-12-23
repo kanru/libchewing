@@ -1,6 +1,5 @@
-use std::path::Path;
+use std::{path::Path, os::unix::prelude::OsStrExt, str};
 
-use miette::{miette, Diagnostic};
 use rusqlite::{params, Connection, Error as RusqliteError, OpenFlags, OptionalExtension};
 use thiserror::Error;
 
@@ -11,7 +10,7 @@ use super::{
     DictionaryMut, DictionaryUpdateError, Phrase, Phrases,
 };
 
-#[derive(Debug, Error, Diagnostic)]
+#[derive(Debug, Error)]
 #[error("sqlite error")]
 pub enum SqliteDictionaryError {
     SqliteError {
@@ -437,6 +436,14 @@ impl From<RusqliteError> for BuildDictionaryError {
     }
 }
 
+impl From<std::str::Utf8Error> for BuildDictionaryError {
+    fn from(source: std::str::Utf8Error) -> Self {
+        BuildDictionaryError {
+            source: Box::new(source),
+        }
+    }
+}
+
 impl DictionaryBuilder for SqliteDictionaryBuilder {
     fn set_info(&mut self, info: DictionaryInfo) -> Result<(), BuildDictionaryError> {
         let tx = self.dict.conn.transaction()?;
@@ -497,9 +504,7 @@ impl DictionaryBuilder for SqliteDictionaryBuilder {
     }
 
     fn build(&mut self, path: &Path) -> Result<(), BuildDictionaryError> {
-        let path = path.to_str().ok_or_else(|| BuildDictionaryError {
-            source: miette!("Path contains invalid UTF-8 chars").into(),
-        })?;
+        let path = str::from_utf8(path.as_os_str().as_bytes())?;
         self.dict.conn.execute("VACUUM INTO ?", [path])?;
         Ok(())
     }

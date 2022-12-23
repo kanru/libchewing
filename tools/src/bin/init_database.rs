@@ -44,47 +44,41 @@ fn main() -> Result<()> {
         .arg(
             Arg::new("type")
                 .short('t')
-                .takes_value(true)
-                .possible_value("sqlite")
-                .possible_value("trie")
+                .value_parser(["sqlite", "trie"])
                 .default_value("sqlite"),
         )
         .arg(
             Arg::new("name")
                 .short('n')
-                .takes_value(true)
                 .default_value("我的詞庫"),
         )
         .arg(
             Arg::new("copyright")
                 .short('c')
-                .takes_value(true)
                 .default_value("Unknown"),
         )
         .arg(
             Arg::new("license")
                 .short('l')
-                .takes_value(true)
                 .default_value("Unknown"),
         )
         .arg(
             Arg::new("version")
                 .short('r')
-                .takes_value(true)
-                .default_value(&timestamp),
+                .default_value("1.0.0")
         )
         .arg(Arg::new("tsi.src").required(true))
         .arg(Arg::new("output").required(true))
         .arg_required_else_help(true)
         .get_matches();
 
-    let tsi_src: String = m.value_of_t_or_exit("tsi.src");
-    let output: String = m.value_of_t_or_exit("output");
-    let db_type: String = m.value_of_t_or_exit("type");
-    let name: String = m.value_of_t_or_exit("name");
-    let copyright: String = m.value_of_t_or_exit("copyright");
-    let license: String = m.value_of_t_or_exit("license");
-    let version: String = m.value_of_t_or_exit("version");
+    let tsi_src: &String = m.get_one("tsi.src").unwrap();
+    let output: &String = m.get_one("output").unwrap();
+    let db_type: &String = m.get_one("type").unwrap();
+    let name: &String = m.get_one("name").unwrap();
+    let copyright: &String = m.get_one("copyright").unwrap();
+    let license: &String = m.get_one("license").unwrap();
+    let version: &String = m.get_one("version").unwrap();
 
     let mut builder: Box<dyn DictionaryBuilder> = match db_type.as_str() {
         "sqlite" => Box::new(SqliteDictionaryBuilder::new()),
@@ -93,12 +87,12 @@ fn main() -> Result<()> {
     };
 
     builder.set_info(DictionaryInfo {
-        name: name.into(),
-        copyright: copyright.into(),
-        license: license.into(),
-        version: version.into(),
+        name: name.to_owned().into(),
+        copyright: copyright.to_owned().into(),
+        license: license.to_owned().into(),
+        version: version.to_owned().into(),
         software: format!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")).into(),
-        created_date: timestamp.into(),
+        created_date: timestamp.to_owned().into(),
     })?;
 
     let tsi = File::open(&tsi_src)?;

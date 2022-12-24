@@ -132,6 +132,9 @@ doc/libchewing.vrs
 *.dir
 *.ilk
 
+# Visual Studio Code
+/.vscode
+
 # indent backup
 *~
 

@@ -30,7 +30,9 @@ trait IntoParseError<T> {
 impl<T> IntoParseError<T> for Result<T> {
     fn parse_error(self, line_num: usize, column: usize) -> std::result::Result<T, ParseError> {
         self.map_err(|source| ParseError {
-            line_num, column, source
+            line_num,
+            column,
+            source,
         })
     }
 }
@@ -44,26 +46,10 @@ fn main() -> Result<()> {
                 .value_parser(["sqlite", "trie"])
                 .default_value("sqlite"),
         )
-        .arg(
-            Arg::new("name")
-                .short('n')
-                .default_value("我的詞庫"),
-        )
-        .arg(
-            Arg::new("copyright")
-                .short('c')
-                .default_value("Unknown"),
-        )
-        .arg(
-            Arg::new("license")
-                .short('l')
-                .default_value("Unknown"),
-        )
-        .arg(
-            Arg::new("version")
-                .short('r')
-                .default_value("1.0.0")
-        )
+        .arg(Arg::new("name").short('n').default_value("我的詞庫"))
+        .arg(Arg::new("copyright").short('c').default_value("Unknown"))
+        .arg(Arg::new("license").short('l').default_value("Unknown"))
+        .arg(Arg::new("version").short('r').default_value("1.0.0"))
         .arg(Arg::new("tsi.src").required(true))
         .arg(Arg::new("output").required(true))
         .arg_required_else_help(true)
@@ -110,18 +96,15 @@ fn main() -> Result<()> {
                 break;
             }
             for c in syllable_str.chars() {
-                syllable_builder =
-                    syllable_builder.insert(Bopomofo::try_from(c)?);
+                syllable_builder = syllable_builder.insert(Bopomofo::try_from(c)?);
             }
             syllables.push(syllable_builder.build());
         }
-        builder
-            .insert(&syllables, (phrase, freq).into())?;
+        builder.insert(&syllables, (phrase, freq).into())?;
     }
     let path: &Path = output.as_ref();
     if path.exists() {
-        fs::remove_file(path)
-            .context("unable to overwrite output")?;
+        fs::remove_file(path).context("unable to overwrite output")?;
     }
     builder.build(path)?;
 

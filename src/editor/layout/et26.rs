@@ -1,7 +1,7 @@
 //! ET26 (倚天26鍵)
 
 use crate::{
-    keymap::{KeyCode, KeyEvent},
+    editor::keymap::{KeyCode, KeyEvent},
     zhuyin::{Bopomofo, BopomofoKind, Syllable},
 };
 
@@ -193,19 +193,23 @@ impl SyllableEditor for Et26 {
         }
     }
 
-    fn is_entering(&self) -> bool {
-        !self.syllable.is_empty()
+    fn is_empty(&self) -> bool {
+        self.syllable.is_empty()
     }
 
-    fn pop(&mut self) -> Option<Bopomofo> {
-        self.syllable.pop()
+    fn remove_last(&mut self) {
+        self.syllable.pop();
     }
 
     fn clear(&mut self) {
         self.syllable.clear();
     }
 
-    fn observe(&self) -> Syllable {
+    fn read(&self) -> Syllable {
         self.syllable
+    }
+
+    fn key_seq(&self) -> Option<String> {
+        None
     }
 }

@@ -17,10 +17,7 @@
 
 use std::fmt::Debug;
 
-use crate::{
-    keymap::KeyEvent,
-    zhuyin::{Bopomofo, Syllable},
-};
+use crate::zhuyin::{Bopomofo, Syllable};
 
 pub use self::{
     dc26::DaiChien26,
@@ -29,6 +26,8 @@ pub use self::{
     pinyin::{Pinyin, PinyinVariant},
     standard::Standard,
 };
+
+use super::keymap::KeyEvent;
 
 mod dc26;
 mod et26;
@@ -66,20 +65,17 @@ pub enum KeyBehavior {
     OpenSymbolTable,
 }
 
-pub trait SyllableEditor: Debug {
+pub trait SyllableEditor {
     /// Handles a key press event and returns the behavior of the layout.
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior;
-    /// Returns whether the editor contains any input.
-    fn is_entering(&self) -> bool;
-    /// Removes the last phonetic key from the buffer and returns it, or [`None`] if it
-    /// is empty.
-    fn pop(&mut self) -> Option<Bopomofo>;
+    /// Removes the last input from the buffer.
+    fn remove_last(&mut self);
     /// Clears the phonetic key buffer, removing all values.
     fn clear(&mut self);
-    /// Returns the current phonetic key buffer without changing it.
-    fn observe(&self) -> Syllable;
-    /// Returns the current key seq buffer
-    fn key_seq(&self) -> Option<String> {
-        None
-    }
+    /// Returns true if the editor buffer is empty.
+    fn is_empty(&self) -> bool;
+    /// Returns the current syllable without changing the editor buffer.
+    fn read(&self) -> Syllable;
+    /// Returns the current key seq buffer as printable string, if supported by the layout.
+    fn key_seq(&self) -> Option<String>;
 }

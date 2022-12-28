@@ -5,7 +5,7 @@ use std::{
     slice,
 };
 
-use chewing::dictionary::{LayeredDictionary, Dictionary, SqliteDictionary, TrieDictionary};
+use chewing::dictionary::{Dictionary, LayeredDictionary, SqliteDictionary, TrieDictionary};
 
 #[no_mangle]
 pub extern "C" fn InitDict(prefix: *mut c_char) -> *mut c_void {

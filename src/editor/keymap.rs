@@ -44,7 +44,7 @@ pub struct Layout {
     map: [KeyCode; 48],
 }
 
-pub trait Keymap: Debug {
+pub trait Keymap {
     fn map_key(&self, input: KeyCode) -> KeyEvent;
 }
 

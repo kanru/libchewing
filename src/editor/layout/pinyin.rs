@@ -1,7 +1,7 @@
 //! Pinyin
 
 use crate::{
-    keymap::{KeyCode, KeyEvent},
+    editor::keymap::{KeyCode, KeyEvent},
     zhuyin::{Bopomofo, Syllable},
 };
 
@@ -235,12 +235,12 @@ impl SyllableEditor for Pinyin {
         KeyBehavior::Commit
     }
 
-    fn is_entering(&self) -> bool {
-        !self.key_seq.is_empty()
+    fn is_empty(&self) -> bool {
+        self.key_seq.is_empty()
     }
 
-    fn pop(&mut self) -> Option<Bopomofo> {
-        todo!()
+    fn remove_last(&mut self) {
+        self.key_seq.pop();
     }
 
     fn clear(&mut self) {
@@ -249,7 +249,7 @@ impl SyllableEditor for Pinyin {
         self.syllable_alt.clear();
     }
 
-    fn observe(&self) -> Syllable {
+    fn read(&self) -> Syllable {
         self.syllable
     }
 

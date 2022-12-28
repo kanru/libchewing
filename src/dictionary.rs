@@ -11,16 +11,16 @@ use thiserror::Error;
 
 use crate::zhuyin::Syllable;
 
+pub use layered::LayeredDictionary;
 pub use sqlite::{SqliteDictionary, SqliteDictionaryBuilder, SqliteDictionaryError};
 pub use trie::{TrieDictionary, TrieDictionaryBuilder, TrieDictionaryStatistics};
-pub use layered::LayeredDictionary;
 
+/// cbindgen:ignore
+mod layered;
 /// cbindgen:ignore
 mod sqlite;
 /// cbindgen:ignore
 mod trie;
-/// cbindgen:ignore
-mod layered;
 
 /// The error type which is returned from updating a dictionary.
 #[derive(Error, Debug)]

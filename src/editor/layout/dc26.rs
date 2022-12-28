@@ -1,7 +1,7 @@
 //! Dai Chien CP26
 
 use crate::{
-    keymap::{KeyEvent, KeyIndex},
+    editor::keymap::{KeyEvent, KeyIndex},
     zhuyin::{Bopomofo, Syllable},
 };
 
@@ -156,19 +156,23 @@ impl SyllableEditor for DaiChien26 {
         KeyBehavior::Absorb
     }
 
-    fn is_entering(&self) -> bool {
-        !self.syllable.is_empty()
+    fn is_empty(&self) -> bool {
+        self.syllable.is_empty()
     }
 
-    fn pop(&mut self) -> Option<Bopomofo> {
-        self.syllable.pop()
+    fn remove_last(&mut self) {
+        self.syllable.pop();
     }
 
     fn clear(&mut self) {
         self.syllable.clear();
     }
 
-    fn observe(&self) -> Syllable {
+    fn read(&self) -> Syllable {
         self.syllable
+    }
+
+    fn key_seq(&self) -> Option<String> {
+        None
     }
 }

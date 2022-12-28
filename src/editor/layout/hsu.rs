@@ -1,7 +1,7 @@
 //! Hsu keyboard layout
 
 use crate::{
-    keymap::KeyCode,
+    editor::keymap::KeyCode,
     zhuyin::{Bopomofo, BopomofoKind, Syllable},
 };
 
@@ -214,20 +214,24 @@ impl SyllableEditor for Hsu {
         }
     }
 
-    fn is_entering(&self) -> bool {
-        !self.syllable.is_empty()
+    fn is_empty(&self) -> bool {
+        self.syllable.is_empty()
     }
 
-    fn pop(&mut self) -> Option<Bopomofo> {
-        self.syllable.pop()
+    fn remove_last(&mut self) {
+        self.syllable.pop();
     }
 
     fn clear(&mut self) {
         self.syllable.clear();
     }
 
-    fn observe(&self) -> Syllable {
+    fn read(&self) -> Syllable {
         self.syllable
+    }
+
+    fn key_seq(&self) -> Option<String> {
+        None
     }
 }
 
@@ -235,8 +239,10 @@ impl SyllableEditor for Hsu {
 mod test {
 
     use crate::{
-        editor::syllable::SyllableEditor,
-        keymap::{IdentityKeymap, KeyCode, Keymap, QWERTY},
+        editor::{
+            keymap::{IdentityKeymap, KeyCode, Keymap, QWERTY},
+            layout::SyllableEditor,
+        },
         zhuyin::Bopomofo,
     };
 
@@ -250,7 +256,7 @@ mod test {
         hsu.key_press(keymap.map_key(KeyCode::E));
         hsu.key_press(keymap.map_key(KeyCode::N));
         hsu.key_press(keymap.map_key(KeyCode::Space));
-        let result = hsu.observe();
+        let result = hsu.read();
         assert_eq!(result.initial, Some(Bopomofo::X));
         assert_eq!(result.medial, Some(Bopomofo::I));
         assert_eq!(result.rime, Some(Bopomofo::EN));
@@ -262,7 +268,7 @@ mod test {
         let keymap = IdentityKeymap::new(QWERTY);
         hsu.key_press(keymap.map_key(KeyCode::N));
         hsu.key_press(keymap.map_key(KeyCode::F));
-        let result = hsu.observe();
+        let result = hsu.read();
         assert_eq!(result.rime, Some(Bopomofo::EN));
     }
 }

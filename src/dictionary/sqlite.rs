@@ -1,4 +1,4 @@
-use std::{path::Path, os::unix::prelude::OsStrExt, str};
+use std::{os::unix::prelude::OsStrExt, path::Path, str};
 
 use rusqlite::{params, Connection, Error as RusqliteError, OpenFlags, OptionalExtension};
 use thiserror::Error;

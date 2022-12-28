@@ -5,13 +5,11 @@ use std::{
 };
 
 use chewing::{
-    editor::syllable::{
-        DaiChien26, Et26, Hsu, KeyBehavior, KeyboardLayoutCompat, Pinyin, Standard, SyllableEditor,
-    },
-    keymap::{IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, QWERTY},
+    editor::{keymap::{IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, QWERTY}, SyllableEditor, layout::{
+        DaiChien26, Et26, Hsu, KeyBehavior, KeyboardLayoutCompat, Pinyin, Standard,
+    }},
 };
 
-#[derive(Debug)]
 #[repr(C)]
 pub struct SyllableEditorWithKeymap {
     kb_type: KeyboardLayoutCompat,
@@ -84,7 +82,7 @@ pub extern "C" fn PhoneticEditorInput(editor_keymap_ptr: *mut c_void, key: i32) 
     };
     let key_event = editor_keymap.keymap.map_key(key_code);
     let result = editor_keymap.editor.key_press(key_event);
-    let key_buf = editor_keymap.editor.observe();
+    let key_buf = editor_keymap.editor.read();
 
     if result == KeyBehavior::Commit {
         if key_buf.is_empty() {
@@ -106,7 +104,7 @@ pub extern "C" fn PhoneticEditorSyllable(editor_keymap_ptr: *mut c_void, pho_inx
     let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
     let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
-    let syllable = editor_keymap.editor.observe();
+    let syllable = editor_keymap.editor.read();
 
     pho_inx[0] = match syllable.initial {
         Some(b) => b.initial_index() as i32,
@@ -132,7 +130,7 @@ pub extern "C" fn PhoneticEditorSyllableAlt(editor_keymap_ptr: *mut c_void, pho_
     let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     // FIXME
-    let syllable = editor_keymap.editor.observe();
+    let syllable = editor_keymap.editor.read();
 
     pho_inx[0] = match syllable.initial {
         Some(b) => b.initial_index() as i32,
@@ -168,7 +166,7 @@ pub extern "C" fn PhoneticEditorKeyseq(editor_keymap_ptr: *mut c_void, key_seq: 
 pub extern "C" fn PhoneticEditorSyllableIndex(editor_keymap_ptr: *mut c_void) -> u16 {
     let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
-    let syllable = editor_keymap.editor.observe();
+    let syllable = editor_keymap.editor.read();
     syllable.to_u16()
 }
 
@@ -177,7 +175,7 @@ pub extern "C" fn PhoneticEditorSyllableIndexAlt(editor_keymap_ptr: *mut c_void)
     let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     // FIXME
-    let syllable = editor_keymap.editor.observe();
+    let syllable = editor_keymap.editor.read();
     syllable.to_u16()
 }
 
@@ -185,7 +183,7 @@ pub extern "C" fn PhoneticEditorSyllableIndexAlt(editor_keymap_ptr: *mut c_void)
 pub extern "C" fn PhoneticEditorRemoveLast(editor_keymap_ptr: *mut c_void) {
     let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
-    editor_keymap.editor.pop();
+    editor_keymap.editor.remove_last();
 }
 
 #[no_mangle]
@@ -206,5 +204,5 @@ pub extern "C" fn PhoneticEditorKbType(editor_keymap_ptr: *mut c_void) -> i32 {
 pub extern "C" fn PhoneticEditorIsEntering(editor_keymap_ptr: *mut c_void) -> bool {
     let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
     let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
-    editor_keymap.editor.is_entering()
+    !editor_keymap.editor.is_empty()
 }

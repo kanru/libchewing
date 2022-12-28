@@ -1,6 +1,9 @@
 use crate::zhuyin::Syllable;
 
-use super::{Dictionary, BlockList, Phrases, DictEntries, DictionaryInfo, DictionaryMut, Phrase, DictionaryUpdateError};
+use super::{
+    BlockList, DictEntries, Dictionary, DictionaryInfo, DictionaryMut, DictionaryUpdateError,
+    Phrase, Phrases,
+};
 
 /// A collection of dictionaries that returns the union of the lookup results.
 /// # Examples
@@ -65,11 +68,11 @@ impl LayeredDictionary {
 
 impl Dictionary for LayeredDictionary {
     /// Lookup phrases from all underlying dictionaries.
-    /// 
+    ///
     /// Phrases are ordered by their first apperance in the underlying dictionaries.
-    /// 
+    ///
     /// Pseudo code
-    /// 
+    ///
     /// ```pseudo_code
     /// Set phrases = list()
     /// Set [d_base, d_layers] = d_list
@@ -96,7 +99,11 @@ impl Dictionary for LayeredDictionary {
                 }
             }
         }
-        Box::new(phrases.into_iter().filter(|phrase| !self.is_blocked(&phrase.phrase)))
+        Box::new(
+            phrases
+                .into_iter()
+                .filter(|phrase| !self.is_blocked(&phrase.phrase)),
+        )
     }
 
     fn entries(&self) -> DictEntries {

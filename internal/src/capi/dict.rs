@@ -5,7 +5,7 @@ use std::{
     slice,
 };
 
-use chewing::dictionary::{ChainedDictionary, Dictionary, SqliteDictionary, TrieDictionary};
+use chewing::dictionary::{LayeredDictionary, Dictionary, SqliteDictionary, TrieDictionary};
 
 #[no_mangle]
 pub extern "C" fn InitDict(prefix: *mut c_char) -> *mut c_void {
@@ -40,7 +40,7 @@ pub extern "C" fn InitDict(prefix: *mut c_char) -> *mut c_void {
         );
     };
 
-    let dict = Box::new(ChainedDictionary::new(vec![word_db, tsi_db], vec![]));
+    let dict = Box::new(LayeredDictionary::new(vec![word_db, tsi_db], vec![]));
 
     Box::into_raw(dict).cast()
 }
@@ -50,7 +50,7 @@ pub extern "C" fn TerminateDict(dict_ptr: *mut c_void) {
     if dict_ptr.is_null() {
         return;
     }
-    let dict_ptr: *mut ChainedDictionary = dict_ptr.cast();
+    let dict_ptr: *mut LayeredDictionary = dict_ptr.cast();
     unsafe { Box::from_raw(dict_ptr) };
 }
 
@@ -66,7 +66,7 @@ pub extern "C" fn GetCharFirst(
     phrase_ptr: *mut Phrase,
     syllable_u16: u16,
 ) -> *mut c_void {
-    let dict_ptr: *mut ChainedDictionary = dict_ptr.cast();
+    let dict_ptr: *mut LayeredDictionary = dict_ptr.cast();
     let dict = unsafe { dict_ptr.as_ref() }.expect("Null pointer");
     let syllable = syllable_u16
         .try_into()
@@ -116,7 +116,7 @@ pub extern "C" fn TreeFindPhrase(
     end: c_int,
     syllables_u16: *mut u16,
 ) -> *mut c_void {
-    let dict_ptr: *mut ChainedDictionary = dict_ptr.cast();
+    let dict_ptr: *mut LayeredDictionary = dict_ptr.cast();
     let dict = unsafe { dict_ptr.as_ref() }.expect("Null pointer");
     let syllables_u16 = unsafe { slice::from_raw_parts(syllables_u16, 50) };
     let begin = begin as usize;

@@ -10,7 +10,6 @@ edition = "2021"
 thiserror = "1.0.0"
 binary-layout = "3.0.0"
 riff = "1.0.1"
-indexmap = "1.8.1"
 "rusqlite" = "0.28.0"
 
 [dev-dependencies]

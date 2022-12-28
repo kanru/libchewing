@@ -137,7 +137,7 @@ where
         // Use Yen's algorithm to find the Kth solution
         //
         // Ref: https://en.m.wikipedia.org/wiki/Yen%27s_algorithm
-        todo!()
+        self.convert(segment)
     }
 }
 

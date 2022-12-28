@@ -1958,16 +1958,16 @@ CHEWING_API int chewing_userphrase_enumerate(ChewingContext *ctx)
 {
     ChewingData *pgdata;
 
+    if (!ctx) {
+        return -1;
+    }
+
 #ifdef HAVE_RUST
     ctx->data->static_data.userphrase_iter = UserEnumeratePhrase(ctx->data->ue);
 #else
 #if WITH_SQLITE3
     int ret;
 #endif
-
-    if (!ctx) {
-        return -1;
-    }
 
     pgdata = ctx->data;
 
@@ -1991,6 +1991,10 @@ CHEWING_API int chewing_userphrase_has_next(ChewingContext *ctx, unsigned int *p
 {
     ChewingData *pgdata;
 
+    if (!ctx || !phrase_len || !bopomofo_len) {
+        return 0;
+    }
+
 #ifdef HAVE_RUST
     return UserEnumerateHasNext(ctx->data->static_data.userphrase_iter, phrase_len, bopomofo_len);
 #else
@@ -1998,9 +2002,6 @@ CHEWING_API int chewing_userphrase_has_next(ChewingContext *ctx, unsigned int *p
     int ret;
 #endif
 
-    if (!ctx || !phrase_len || !bopomofo_len) {
-        return 0;
-    }
     pgdata = ctx->data;
 
     LOG_API("");
@@ -2042,6 +2043,10 @@ CHEWING_API int chewing_userphrase_get(ChewingContext *ctx,
 {
     ChewingData *pgdata;
 
+    if (!ctx || !phrase_buf || !phrase_len || !bopomofo_buf || !bopomofo_len) {
+        return -1;
+    }
+
 #ifdef HAVE_RUST
     return UserEnumerateGet(ctx->data->static_data.userphrase_iter, phrase_buf, phrase_len, bopomofo_buf, bopomofo_len);
 #else
@@ -2052,9 +2057,6 @@ CHEWING_API int chewing_userphrase_get(ChewingContext *ctx,
     uint16_t phone_array[MAX_PHRASE_LEN + 1] = { 0 };
 #endif
 
-    if (!ctx || !phrase_buf || !phrase_len || !bopomofo_buf || !bopomofo_len) {
-        return -1;
-    }
     pgdata = ctx->data;
 
     LOG_API("");

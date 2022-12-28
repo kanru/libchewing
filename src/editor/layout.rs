@@ -17,7 +17,7 @@
 
 use std::fmt::Debug;
 
-use crate::zhuyin::{Bopomofo, Syllable};
+use crate::zhuyin::Syllable;
 
 pub use self::{
     dc26::DaiChien26,

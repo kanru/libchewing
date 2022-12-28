@@ -117,8 +117,8 @@ test_big_endian(WORDS_BIGENDIAN)
 
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(INC_DIR ${PROJECT_SOURCE_DIR}/include)
-set(TOOLS_SRC_DIR ${PROJECT_SOURCE_DIR}/src/tools)
-set(TOOLS_BIN_DIR ${PROJECT_BINARY_DIR}/src/tools)
+set(TOOLS_SRC_DIR ${PROJECT_SOURCE_DIR}/src/c/tools)
+set(TOOLS_BIN_DIR ${PROJECT_BINARY_DIR}/src/c/tools)
 set(DATA_SRC_DIR ${PROJECT_SOURCE_DIR}/data)
 set(DATA_BIN_DIR ${PROJECT_BINARY_DIR}/data)
 set(TEST_SRC_DIR ${PROJECT_SOURCE_DIR}/test)
@@ -157,7 +157,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/include/internal
     ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_SOURCE_DIR}/src/porting_layer/include
+    ${PROJECT_SOURCE_DIR}/src/c/porting_layer/include
 )
 
 if(WITH_RUST)
@@ -246,9 +246,9 @@ else()
 add_executable(init_database ${TOOLS_SRC_DIR}/init_database.c $<TARGET_OBJECTS:common>)
 add_executable(dump_database
     ${TOOLS_SRC_DIR}/dump_database.c
-    ${SRC_DIR}/porting_layer/src/plat_mmap_posix.c
-    ${SRC_DIR}/porting_layer/src/plat_mmap_windows.c
-    ${SRC_DIR}/porting_layer/src/rpl_malloc.c
+    ${SRC_DIR}/c/porting_layer/src/plat_mmap_posix.c
+    ${SRC_DIR}/c/porting_layer/src/plat_mmap_windows.c
+    ${SRC_DIR}/c/porting_layer/src/rpl_malloc.c
     $<TARGET_OBJECTS:common>
 )
 set_target_properties(${ALL_TOOLS} PROPERTIES
@@ -377,22 +377,22 @@ add_library(chewing OBJECT
     ${SRC_DIR}/chewingio.c
     ${SRC_DIR}/chewingutil.c
     ${SRC_DIR}/choice.c
-    ${SRC_DIR}/dict.c
+    ${SRC_DIR}/c/dict.c
     ${SRC_DIR}/mod_aux.c
-    ${SRC_DIR}/pinyin.c
-    ${SRC_DIR}/porting_layer/include/plat_mmap.h
-    ${SRC_DIR}/porting_layer/include/plat_path.h
-    ${SRC_DIR}/porting_layer/include/plat_types.h
-    ${SRC_DIR}/porting_layer/include/sys/plat_posix.h
-    ${SRC_DIR}/porting_layer/include/sys/plat_windows.h
-    ${SRC_DIR}/porting_layer/src/plat_mmap_posix.c
-    ${SRC_DIR}/porting_layer/src/plat_mmap_windows.c
-    ${SRC_DIR}/porting_layer/src/plat_path.c
-    ${SRC_DIR}/porting_layer/src/rpl_malloc.c
+    ${SRC_DIR}/c/pinyin.c
+    ${SRC_DIR}/c/porting_layer/include/plat_mmap.h
+    ${SRC_DIR}/c/porting_layer/include/plat_path.h
+    ${SRC_DIR}/c/porting_layer/include/plat_types.h
+    ${SRC_DIR}/c/porting_layer/include/sys/plat_posix.h
+    ${SRC_DIR}/c/porting_layer/include/sys/plat_windows.h
+    ${SRC_DIR}/c/porting_layer/src/plat_mmap_posix.c
+    ${SRC_DIR}/c/porting_layer/src/plat_mmap_windows.c
+    ${SRC_DIR}/c/porting_layer/src/plat_path.c
+    ${SRC_DIR}/c/porting_layer/src/rpl_malloc.c
     ${SRC_DIR}/private.h
     ${SRC_DIR}/tree.c
     ${SRC_DIR}/userphrase.c
-    ${SRC_DIR}/bopomofo.c
+    ${SRC_DIR}/c/bopomofo.c
 )
 set_target_properties(chewing PROPERTIES
     COMPILE_DEFINITIONS "CHEWING_DATADIR=\"${CMAKE_INSTALL_FULL_DATADIR}/libchewing\""
@@ -402,8 +402,8 @@ if (WITH_SQLITE3)
     add_library(userphrase STATIC
         ${INC_DIR}/internal/chewing-sql.h
 
-        ${SRC_DIR}/chewing-sql.c
-        ${SRC_DIR}/userphrase-sql.c
+        ${SRC_DIR}/c/chewing-sql.c
+        ${SRC_DIR}/c/userphrase-sql.c
     )
 
     if (WITH_INTERNAL_SQLITE3)
@@ -433,8 +433,8 @@ else()
     add_library(userphrase STATIC
         ${INC_DIR}/internal/hash-private.h
 
-        ${SRC_DIR}/hash.c
-        ${SRC_DIR}/userphrase-hash.c
+        ${SRC_DIR}/c/hash.c
+        ${SRC_DIR}/c/userphrase-hash.c
     )
 endif()
 
@@ -482,8 +482,8 @@ add_library(common OBJECT
     ${INC_DIR}/internal/key2pho-private.h
     ${INC_DIR}/internal/memory-private.h
 
-    ${SRC_DIR}/common/chewing-utf8-util.c
-    ${SRC_DIR}/common/key2pho.c
+    ${SRC_DIR}/c/common/chewing-utf8-util.c
+    ${SRC_DIR}/c/common/key2pho.c
 )
 
 if (WITH_RUST)

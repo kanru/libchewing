@@ -164,13 +164,13 @@ mod tests {
     fn test_dictionary() -> HashMap<Vec<Syllable>, Vec<Phrase>> {
         HashMap::from([
             (vec![syl![G, U, O, TONE2]], vec![("國", 1).into()]),
-            (vec![syl![M, I, EN, TONE4]], vec![("民", 1).into()]),
+            (vec![syl![M, I, EN, TONE2]], vec![("民", 1).into()]),
             (vec![syl![D, A, TONE4]], vec![("大", 1).into()]),
             (vec![syl![H, U, EI, TONE4]], vec![("會", 1).into()]),
             (vec![syl![D, AI, TONE4]], vec![("代", 1).into()]),
             (vec![syl![B, I, AU, TONE3]], vec![("表", 1).into()]),
             (
-                vec![syl![G, U, O, TONE2], syl![M, I, EN, TONE4]],
+                vec![syl![G, U, O, TONE2], syl![M, I, EN, TONE2]],
                 vec![("國民", 200).into()],
             ),
             (
@@ -200,7 +200,7 @@ mod tests {
         let sequence = ChineseSequence {
             syllables: vec![
                 syl![G, U, O, TONE2],
-                syl![M, I, EN, TONE4],
+                syl![M, I, EN, TONE2],
                 syl![D, A, TONE4],
                 syl![H, U, EI, TONE4],
                 syl![D, AI, TONE4],
@@ -238,7 +238,7 @@ mod tests {
         let sequence = ChineseSequence {
             syllables: vec![
                 syl![G, U, O, TONE2],
-                syl![M, I, EN, TONE4],
+                syl![M, I, EN, TONE2],
                 syl![D, A, TONE4],
                 syl![H, U, EI, TONE4],
                 syl![D, AI, TONE4],
@@ -286,7 +286,7 @@ mod tests {
         let sequence = ChineseSequence {
             syllables: vec![
                 syl![G, U, O, TONE2],
-                syl![M, I, EN, TONE4],
+                syl![M, I, EN, TONE2],
                 syl![D, A, TONE4],
                 syl![H, U, EI, TONE4],
                 syl![D, AI, TONE4],

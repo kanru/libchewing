@@ -389,8 +389,13 @@ CHEWING_API int chewing_set_KBType(ChewingContext *ctx, int kbtype)
     if (pgdata->bopomofoData.editorWithKeymap != 0) {
         FreePhoneticEditor(pgdata->bopomofoData.editorWithKeymap);
     }
-    pgdata->bopomofoData.editorWithKeymap = NewPhoneticEditor(kbtype);
-    return 0;
+    if (kbtype < KB_TYPE_NUM && kbtype >= 0) {
+        pgdata->bopomofoData.editorWithKeymap = NewPhoneticEditor(kbtype);
+        return 0;
+    } else {
+        pgdata->bopomofoData.editorWithKeymap = NewPhoneticEditor(KB_DEFAULT);
+        return -1;
+    }
 #else
     if (kbtype < KB_TYPE_NUM && kbtype >= 0) {
         ctx->data->bopomofoData.kbtype = kbtype;

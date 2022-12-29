@@ -21,8 +21,11 @@ use crate::zhuyin::Syllable;
 
 pub use self::{
     dc26::DaiChien26,
+    et::Et,
     et26::Et26,
+    ginyieh::GinYieh,
     hsu::Hsu,
+    ibm::Ibm,
     pinyin::{Pinyin, PinyinVariant},
     standard::Standard,
 };
@@ -30,8 +33,11 @@ pub use self::{
 use super::keymap::KeyEvent;
 
 mod dc26;
+mod et;
 mod et26;
+mod ginyieh;
 mod hsu;
+mod ibm;
 mod pinyin;
 mod standard;
 

@@ -135,3 +135,25 @@ pub const QWERTY: Layout = Layout {
             Z, X, C, V, B, N, M, Comma, Dot, Slash, Space
     ],
 };
+
+#[rustfmt::skip]
+pub const DVORAK: Layout = Layout {
+    name: "DVORAK",
+    map: [
+        N1, N2, N3, N4, N5, N6, N7, N8, N9, N0, LBracket, RBracket, BSlash, Grave,
+        Quote, Comma, Dot, P, Y, F, G, C, R, L, Slash, Equal,
+          A, O, E, U, I, D, H, T, N, S, Minus,
+            SColon, Q, J, K, X, B, M, W, V, Z, Space
+    ],
+};
+
+#[rustfmt::skip]
+pub const CARPALX: Layout = Layout {
+    name: "CARPALX (QGMLWY)",
+    map: [
+        N1, N2, N3, N4, N5, N6, N7, N8, N9, N0, Minus, Equal, BSlash, Grave,
+        Q, G, M, L, W, Y, F, U, B, SColon, LBracket, RBracket,
+          D, S, T, N, R, I, A, E, O, H, Quote,
+            Z, X, C, V, J, K, P, Comma, Dot, Slash, Space
+    ],
+};

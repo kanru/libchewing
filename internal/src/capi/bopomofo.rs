@@ -1,8 +1,8 @@
 use std::{ffi::CString, os::raw::c_char, slice};
 
 use chewing::editor::{
-    keymap::{IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, QWERTY},
-    layout::{DaiChien26, Et26, Hsu, KeyBehavior, KeyboardLayoutCompat, Pinyin, Standard},
+    keymap::{IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, QWERTY, RemappingKeymap, DVORAK, CARPALX},
+    layout::{DaiChien26, Et26, Hsu, Ibm, KeyBehavior, KeyboardLayoutCompat, Pinyin, Standard, Et, GinYieh},
     SyllableEditor,
 };
 
@@ -29,16 +29,36 @@ pub extern "C" fn NewPhoneticEditor(
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(Hsu::new()),
         }),
-        KB::Ibm => todo!(),
-        KB::GinYieh => todo!(),
-        KB::Et => todo!(),
+        KB::Ibm => Box::new(SyllableEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(Ibm::new()),
+        }),
+        KB::GinYieh => Box::new(SyllableEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(GinYieh::new()),
+        }),
+        KB::Et => Box::new(SyllableEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(IdentityKeymap::new(QWERTY)),
+            editor: Box::new(Et::new()),
+        }),
         KB::Et26 => Box::new(SyllableEditorWithKeymap {
             kb_type,
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(Et26::new()),
         }),
-        KB::Dvorak => todo!(),
-        KB::DvorakHsu => todo!(),
+        KB::Dvorak => Box::new(SyllableEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(RemappingKeymap::new(DVORAK, QWERTY)),
+            editor: Box::new(Standard::new()),
+        }),
+        KB::DvorakHsu => Box::new(SyllableEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(RemappingKeymap::new(DVORAK, QWERTY)),
+            editor: Box::new(Hsu::new()),
+        }),
         KB::DachenCp26 => Box::new(SyllableEditorWithKeymap {
             kb_type,
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
@@ -59,7 +79,11 @@ pub extern "C" fn NewPhoneticEditor(
             keymap: Box::new(IdentityKeymap::new(QWERTY)),
             editor: Box::new(Pinyin::mps2()),
         }),
-        KB::Carpalx => todo!(),
+        KB::Carpalx => Box::new(SyllableEditorWithKeymap {
+            kb_type,
+            keymap: Box::new(RemappingKeymap::new(CARPALX, QWERTY)),
+            editor: Box::new(Standard::new()),
+        }),
     };
     Box::into_raw(editor)
 }

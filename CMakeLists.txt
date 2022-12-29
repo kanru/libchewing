@@ -391,7 +391,7 @@ add_library(chewing OBJECT
     ${SRC_DIR}/c/porting_layer/src/rpl_malloc.c
     ${SRC_DIR}/private.h
     ${SRC_DIR}/tree.c
-    ${SRC_DIR}/userphrase.c
+    ${SRC_DIR}/c/userphrase.c
     ${SRC_DIR}/c/bopomofo.c
 )
 set_target_properties(chewing PROPERTIES

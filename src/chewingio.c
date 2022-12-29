@@ -250,10 +250,11 @@ CHEWING_API ChewingContext *chewing_new2(const char *syspath,
     if (ctx->data->ue == NULL) {
         ret = 1;
     }
+    FreeDefaultUserPhrasePath(userphrase_path);
 #else
     ret = InitUserphrase(ctx->data, userphrase_path);
-#endif
     free(userphrase_path);
+#endif
 
     if (ret) {
         LOG_ERROR("InitSql returns %d", ret);

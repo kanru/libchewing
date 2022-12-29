@@ -5,4 +5,5 @@
 pub mod conversion;
 pub mod dictionary;
 pub mod editor;
+pub mod path;
 pub mod zhuyin;

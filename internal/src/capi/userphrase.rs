@@ -9,12 +9,32 @@ use std::{
 use chewing::{
     dictionary::{DictEntries, Dictionary, SqliteDictionary},
     editor::{SqliteUserFreqEstimate, UserFreqEstimate},
+    path::userphrase_path,
     zhuyin::Syllable,
 };
 
 struct UserphraseDbAndEstimate {
     db: SqliteDictionary,
     estimate: SqliteUserFreqEstimate,
+}
+
+#[no_mangle]
+pub extern "C" fn GetDefaultUserPhrasePath(_data: *mut c_void) -> *mut c_char {
+    match userphrase_path() {
+        Some(path) => CString::new(
+            path.as_os_str()
+                .to_str()
+                .expect("path should be valid utf-8"),
+        )
+        .expect("path should be vaild C string")
+        .into_raw(),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn FreeDefaultUserPhrasePath(path: *mut c_char) {
+    let _ = unsafe { CString::from_raw(path) };
 }
 
 #[no_mangle]

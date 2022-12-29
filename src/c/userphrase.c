@@ -18,6 +18,8 @@
 
 #include "plat_path.h"
 
+#ifndef HAVE_RUST
+
 #if defined(_WIN32) || defined(_WIN64) || defined(_WIN32_WCE)
 
 #    include <Shlobj.h>
@@ -184,5 +186,7 @@ char *GetDefaultUserPhrasePath(ChewingData *pgdata)
 
     return NULL;
 }
+
+#endif
 
 #endif

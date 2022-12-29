@@ -86,6 +86,10 @@ void *TreeFindPhrase(void *dict_ptr, int begin, int end, uint16_t *syllables_u16
 
 void *GetVocabNext(void *iter_ptr, struct Phrase *phrase_ptr);
 
+char *GetDefaultUserPhrasePath(void *_data);
+
+void FreeDefaultUserPhrasePath(char *path);
+
 void *InitUserphrase(char *path);
 
 void TerminateUserphrase(void *ptr);

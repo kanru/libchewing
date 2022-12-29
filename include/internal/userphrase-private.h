@@ -110,8 +110,8 @@ void UserGetPhraseEnd(struct ChewingData *pgdata, const uint16_t phoneSeq[]);
 
 void IncreaseLifeTime(struct ChewingData *pgdata);
 
-#endif
 char *GetDefaultUserPhrasePath(struct ChewingData *pgdata);
+#endif
 
 
 /* *INDENT-OFF* */

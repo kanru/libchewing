@@ -134,7 +134,7 @@ typedef struct PinYinData {
 
 typedef struct BopomofoData {
 #if HAVE_RUST
-    void *editorWithKeymap;
+    SyllableEditorWithKeymap *editorWithKeymap;
 #else
     int kbtype;
     int pho_inx[BOPOMOFO_SIZE];

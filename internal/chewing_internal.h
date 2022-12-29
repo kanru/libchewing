@@ -46,29 +46,33 @@ typedef enum KeyboardLayoutCompat {
 
 typedef struct Phrase Phrase;
 
-void *NewPhoneticEditor(enum KeyboardLayoutCompat kb_type);
+typedef struct SyllableEditorWithKeymap SyllableEditorWithKeymap;
 
-void FreePhoneticEditor(void *editor_keymap_ptr);
+struct SyllableEditorWithKeymap *NewPhoneticEditor(enum KeyboardLayoutCompat kb_type);
 
-enum KeyBehavior PhoneticEditorInput(void *editor_keymap_ptr, int32_t key);
+void FreePhoneticEditor(struct SyllableEditorWithKeymap *editor_keymap_ptr);
 
-void PhoneticEditorSyllable(void *editor_keymap_ptr, int32_t *pho_inx);
+enum KeyBehavior PhoneticEditorInput(struct SyllableEditorWithKeymap *editor_keymap_ptr,
+                                     int32_t key);
 
-void PhoneticEditorSyllableAlt(void *editor_keymap_ptr, int32_t *pho_inx);
+void PhoneticEditorSyllable(struct SyllableEditorWithKeymap *editor_keymap_ptr, int32_t *pho_inx);
 
-void PhoneticEditorKeyseq(void *editor_keymap_ptr, char *key_seq);
+void PhoneticEditorSyllableAlt(struct SyllableEditorWithKeymap *editor_keymap_ptr,
+                               int32_t *pho_inx);
 
-uint16_t PhoneticEditorSyllableIndex(void *editor_keymap_ptr);
+void PhoneticEditorKeyseq(struct SyllableEditorWithKeymap *editor_keymap_ptr, char *key_seq);
 
-uint16_t PhoneticEditorSyllableIndexAlt(void *editor_keymap_ptr);
+uint16_t PhoneticEditorSyllableIndex(struct SyllableEditorWithKeymap *editor_keymap_ptr);
 
-void PhoneticEditorRemoveLast(void *editor_keymap_ptr);
+uint16_t PhoneticEditorSyllableIndexAlt(struct SyllableEditorWithKeymap *editor_keymap_ptr);
 
-void PhoneticEditorRemoveAll(void *editor_keymap_ptr);
+void PhoneticEditorRemoveLast(struct SyllableEditorWithKeymap *editor_keymap_ptr);
 
-int32_t PhoneticEditorKbType(void *editor_keymap_ptr);
+void PhoneticEditorRemoveAll(struct SyllableEditorWithKeymap *editor_keymap_ptr);
 
-bool PhoneticEditorIsEntering(void *editor_keymap_ptr);
+int32_t PhoneticEditorKbType(struct SyllableEditorWithKeymap *editor_keymap_ptr);
+
+bool PhoneticEditorIsEntering(struct SyllableEditorWithKeymap *editor_keymap_ptr);
 
 void *InitDict(char *prefix);
 

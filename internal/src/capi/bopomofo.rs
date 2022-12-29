@@ -1,13 +1,9 @@
-use std::{
-    ffi::{c_void, CString},
-    os::raw::c_char,
-    slice,
-};
+use std::{ffi::CString, os::raw::c_char, slice};
 
-use chewing::{
-    editor::{keymap::{IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, QWERTY}, SyllableEditor, layout::{
-        DaiChien26, Et26, Hsu, KeyBehavior, KeyboardLayoutCompat, Pinyin, Standard,
-    }},
+use chewing::editor::{
+    keymap::{IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, QWERTY},
+    layout::{DaiChien26, Et26, Hsu, KeyBehavior, KeyboardLayoutCompat, Pinyin, Standard},
+    SyllableEditor,
 };
 
 #[repr(C)]
@@ -18,7 +14,9 @@ pub struct SyllableEditorWithKeymap {
 }
 
 #[no_mangle]
-pub extern "C" fn NewPhoneticEditor(kb_type: KeyboardLayoutCompat) -> *mut c_void {
+pub extern "C" fn NewPhoneticEditor(
+    kb_type: KeyboardLayoutCompat,
+) -> *mut SyllableEditorWithKeymap {
     use KeyboardLayoutCompat as KB;
     let editor: Box<SyllableEditorWithKeymap> = match kb_type {
         KB::Default => Box::new(SyllableEditorWithKeymap {
@@ -63,19 +61,20 @@ pub extern "C" fn NewPhoneticEditor(kb_type: KeyboardLayoutCompat) -> *mut c_voi
         }),
         KB::Carpalx => todo!(),
     };
-    Box::into_raw(editor).cast()
+    Box::into_raw(editor)
 }
 
 #[no_mangle]
-pub extern "C" fn FreePhoneticEditor(editor_keymap_ptr: *mut c_void) {
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
+pub extern "C" fn FreePhoneticEditor(editor_keymap_ptr: *mut SyllableEditorWithKeymap) {
     unsafe { Box::from_raw(editor_keymap_ptr) };
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorInput(editor_keymap_ptr: *mut c_void, key: i32) -> KeyBehavior {
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+pub extern "C" fn PhoneticEditorInput(
+    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
+    key: i32,
+) -> KeyBehavior {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     let key_code = match (key as u8).as_key_code() {
         Some(key_code) => key_code,
         None => return KeyBehavior::KeyError,
@@ -100,10 +99,12 @@ pub extern "C" fn PhoneticEditorInput(editor_keymap_ptr: *mut c_void, key: i32) 
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorSyllable(editor_keymap_ptr: *mut c_void, pho_inx: *mut i32) {
+pub extern "C" fn PhoneticEditorSyllable(
+    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
+    pho_inx: *mut i32,
+) {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     let syllable = editor_keymap.editor.read();
 
     pho_inx[0] = match syllable.initial {
@@ -125,10 +126,12 @@ pub extern "C" fn PhoneticEditorSyllable(editor_keymap_ptr: *mut c_void, pho_inx
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorSyllableAlt(editor_keymap_ptr: *mut c_void, pho_inx: *mut i32) {
+pub extern "C" fn PhoneticEditorSyllableAlt(
+    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
+    pho_inx: *mut i32,
+) {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     // FIXME
     let syllable = editor_keymap.editor.read();
 
@@ -151,10 +154,12 @@ pub extern "C" fn PhoneticEditorSyllableAlt(editor_keymap_ptr: *mut c_void, pho_
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorKeyseq(editor_keymap_ptr: *mut c_void, key_seq: *mut c_char) {
+pub extern "C" fn PhoneticEditorKeyseq(
+    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
+    key_seq: *mut c_char,
+) {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     let key_seq = unsafe { slice::from_raw_parts_mut(key_seq as *mut u8, 10) };
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
     if let Some(key_seq_str) = editor_keymap.editor.key_seq() {
         let key_seq_cstr = CString::new(key_seq_str).unwrap();
         let key_seq_bytes = key_seq_cstr.as_bytes_with_nul();
@@ -163,46 +168,46 @@ pub extern "C" fn PhoneticEditorKeyseq(editor_keymap_ptr: *mut c_void, key_seq: 
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorSyllableIndex(editor_keymap_ptr: *mut c_void) -> u16 {
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+pub extern "C" fn PhoneticEditorSyllableIndex(
+    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
+) -> u16 {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     let syllable = editor_keymap.editor.read();
     syllable.to_u16()
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorSyllableIndexAlt(editor_keymap_ptr: *mut c_void) -> u16 {
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+pub extern "C" fn PhoneticEditorSyllableIndexAlt(
+    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
+) -> u16 {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     // FIXME
     let syllable = editor_keymap.editor.read();
     syllable.to_u16()
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorRemoveLast(editor_keymap_ptr: *mut c_void) {
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+pub extern "C" fn PhoneticEditorRemoveLast(editor_keymap_ptr: *mut SyllableEditorWithKeymap) {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     editor_keymap.editor.remove_last();
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorRemoveAll(editor_keymap_ptr: *mut c_void) {
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+pub extern "C" fn PhoneticEditorRemoveAll(editor_keymap_ptr: *mut SyllableEditorWithKeymap) {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     editor_keymap.editor.clear();
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorKbType(editor_keymap_ptr: *mut c_void) -> i32 {
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+pub extern "C" fn PhoneticEditorKbType(editor_keymap_ptr: *mut SyllableEditorWithKeymap) -> i32 {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     editor_keymap.kb_type as i32
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorIsEntering(editor_keymap_ptr: *mut c_void) -> bool {
-    let editor_keymap_ptr: *mut SyllableEditorWithKeymap = editor_keymap_ptr.cast();
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut() }.unwrap();
+pub extern "C" fn PhoneticEditorIsEntering(
+    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
+) -> bool {
+    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
     !editor_keymap.editor.is_empty()
 }

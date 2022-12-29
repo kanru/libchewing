@@ -15,11 +15,8 @@ pub use layered::LayeredDictionary;
 pub use sqlite::{SqliteDictionary, SqliteDictionaryBuilder, SqliteDictionaryError};
 pub use trie::{TrieDictionary, TrieDictionaryBuilder, TrieDictionaryStatistics};
 
-/// cbindgen:ignore
 mod layered;
-/// cbindgen:ignore
 mod sqlite;
-/// cbindgen:ignore
 mod trie;
 
 /// The error type which is returned from updating a dictionary.

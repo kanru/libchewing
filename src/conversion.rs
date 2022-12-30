@@ -1,6 +1,6 @@
 use crate::zhuyin::Syllable;
 
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Interval {
     start: usize,
     end: usize,

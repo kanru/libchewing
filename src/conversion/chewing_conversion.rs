@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{
+    collections::{hash_map::Entry, HashMap, HashSet},
+    fmt::Debug,
+};
 
 use crate::{
     dictionary::{Dictionary, Phrase},
@@ -76,20 +79,25 @@ where
         // Heuristic: multiply frequency with length to boost the score of long phrases
         source_node.best_score + len * (freq / reduction_factor).max(1)
     }
-}
 
-impl<D> ConversionEngine for ChewingConversionEngine<D>
-where
-    D: Dictionary,
-{
-    fn convert(&self, sequence: &ChineseSequence) -> Vec<Interval> {
+    fn find_best_path(
+        &self,
+        graph: &mut Graph,
+        sequence: &ChineseSequence,
+        source: usize,
+        target: usize,
+    ) -> Path {
+        debug_assert!(target <= sequence.syllables.len());
+
         // Calculate the best path. The graph is a DAG so we can scan from left
         // to right to find the longest-paths.
-        let mut cache = HashMap::new();
-        let mut dp = vec![Node::default(); sequence.syllables.len() + 1];
-        for t in 0..=sequence.syllables.len() {
-            for s in 0..t {
-                let entry = cache.entry((s, t));
+        let mut dp = vec![Node::default(); target + 1];
+        for t in source..=target {
+            for s in source..t {
+                if !graph.is_edge_possible(s, t) {
+                    continue;
+                }
+                let entry = graph.entry(s, t);
                 if let Some(phrase) = entry.or_insert_with(|| {
                     self.find_best_phrase(
                         s,
@@ -111,15 +119,130 @@ where
             }
         }
 
+        Path::from_dp(dp, target)
+    }
+
+    fn find_all_paths(
+        &self,
+        graph: &mut Graph,
+        sequence: &ChineseSequence,
+        source: usize,
+        target: usize,
+        prefix: Option<Path>,
+    ) -> Vec<Path> {
+        if source == target {
+            return vec![prefix.expect("should have prefix")];
+        }
         let mut result = vec![];
-        let mut end = sequence.syllables.len();
+        for t in source..=target {
+            let entry = graph.entry(source, t);
+            if let Some(phrase) = entry.or_insert_with(|| {
+                self.find_best_phrase(
+                    source,
+                    &sequence.syllables[source..t],
+                    &sequence.selections,
+                    &sequence.breaks,
+                )
+            }) {
+                let mut prefix = prefix.clone().unwrap_or_default();
+                prefix.score += 1;
+                prefix.intervals.push(Interval {
+                    start: source,
+                    end: t,
+                    phrase: phrase.to_string(),
+                });
+                result.append(&mut self.find_all_paths(graph, sequence, t, target, Some(prefix)));
+            }
+        }
+        result
+    }
+}
+
+impl<D> ConversionEngine for ChewingConversionEngine<D>
+where
+    D: Dictionary,
+{
+    fn convert(&self, sequence: &ChineseSequence) -> Vec<Interval> {
+        let mut graph = Graph::default();
+        self.find_best_path(&mut graph, sequence, 0, sequence.syllables.len())
+            .intervals
+    }
+
+    fn convert_next(&self, sequence: &ChineseSequence, next: usize) -> Vec<Interval> {
+        // TODO: Use modified Yen's algorithm to find the Kth solution
+        let mut graph = Graph::default();
+        let mut paths =
+            self.find_all_paths(&mut graph, sequence, 0, sequence.syllables.len(), None);
+        paths.sort();
+        paths
+            .into_iter()
+            .cycle()
+            .skip(next)
+            .next()
+            .map(|p| p.intervals)
+            .expect("should have path")
+    }
+}
+
+#[derive(Default)]
+struct Graph {
+    edges_score: HashMap<(usize, usize), Option<Phrase>>,
+    removed_edges: HashSet<(usize, usize)>,
+    removed_nodes: HashSet<usize>,
+}
+
+impl Graph {
+    fn remove_edge(&mut self, s: usize, t: usize) {
+        self.removed_edges.insert((s, t));
+    }
+    fn remove_node(&mut self, node: usize) {
+        self.removed_nodes.insert(node);
+    }
+    fn restore_removed(&mut self) {
+        self.removed_edges.clear();
+        self.removed_nodes.clear();
+    }
+    fn is_edge_possible(&self, s: usize, t: usize) -> bool {
+        !self.removed_nodes.contains(&s)
+            && !self.removed_nodes.contains(&t)
+            && !self.removed_edges.contains(&(s, t))
+    }
+    fn entry(&mut self, s: usize, t: usize) -> Entry<(usize, usize), Option<Phrase>> {
+        debug_assert!(
+            self.is_edge_possible(s, t),
+            "edge {:?} is removed from the graph",
+            (s, t)
+        );
+        self.edges_score.entry((s, t))
+    }
+}
+
+#[derive(Clone, Default, Debug)]
+struct Node {
+    best_source: usize,
+    best_score: usize,
+    best_phrase: Option<Phrase>,
+}
+
+#[derive(Default, Clone)]
+struct Path {
+    score: usize,
+    intervals: Vec<Interval>,
+}
+
+impl Path {
+    fn from_dp(dp: Vec<Node>, end: usize) -> Path {
+        let mut intervals = vec![];
+        let mut end = end;
         let mut start = dp[end].best_source;
+        let mut score = 0;
         loop {
             let phrase = dp[end]
                 .best_phrase
                 .as_ref()
                 .expect("all solutions should have valid phrases");
-            result.push(Interval {
+            score += dp[end].best_score;
+            intervals.push(Interval {
                 start,
                 end,
                 phrase: phrase.to_string(),
@@ -130,22 +253,28 @@ where
             end = start;
             start = dp[end].best_source;
         }
-        result
-    }
-
-    fn convert_next(&self, segment: &ChineseSequence, next: usize) -> Vec<Interval> {
-        // Use Yen's algorithm to find the Kth solution
-        //
-        // Ref: https://en.m.wikipedia.org/wiki/Yen%27s_algorithm
-        self.convert(segment)
+        Path { score, intervals }
     }
 }
 
-#[derive(Clone, Default, Debug)]
-struct Node {
-    best_source: usize,
-    best_score: usize,
-    best_phrase: Option<Phrase>,
+impl PartialEq for Path {
+    fn eq(&self, other: &Self) -> bool {
+        self.score == other.score
+    }
+}
+
+impl Eq for Path {}
+
+impl PartialOrd for Path {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.score.partial_cmp(&other.score)
+    }
+}
+
+impl Ord for Path {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.score.cmp(&other.score)
+    }
 }
 
 #[cfg(test)]
@@ -341,6 +470,169 @@ mod tests {
                 phrase: "新酷音".to_string()
             },],
             engine.convert(&sequence)
+        );
+    }
+
+    #[test]
+    fn convert_cycle_alternatives() {
+        let dict = test_dictionary();
+        let engine = ChewingConversionEngine::new(dict);
+        let sequence = ChineseSequence {
+            syllables: vec![
+                syl![G, U, O, TONE2],
+                syl![M, I, EN, TONE2],
+                syl![D, A, TONE4],
+                syl![H, U, EI, TONE4],
+                syl![D, AI, TONE4],
+                syl![B, I, AU, TONE3],
+            ],
+            selections: vec![],
+            breaks: vec![],
+        };
+        assert_eq!(
+            vec![
+                Interval {
+                    start: 0,
+                    end: 2,
+                    phrase: "國民".to_string()
+                },
+                Interval {
+                    start: 2,
+                    end: 4,
+                    phrase: "大會".to_string()
+                },
+                Interval {
+                    start: 4,
+                    end: 6,
+                    phrase: "代表".to_string()
+                },
+            ],
+            engine.convert_next(&sequence, 0)
+        );
+        assert_eq!(
+            vec![
+                Interval {
+                    start: 0,
+                    end: 1,
+                    phrase: "國".to_string()
+                },
+                Interval {
+                    start: 1,
+                    end: 2,
+                    phrase: "民".to_string()
+                },
+                Interval {
+                    start: 2,
+                    end: 4,
+                    phrase: "大會".to_string()
+                },
+                Interval {
+                    start: 4,
+                    end: 6,
+                    phrase: "代表".to_string()
+                },
+            ],
+            engine.convert_next(&sequence, 1)
+        );
+        assert_eq!(
+            vec![
+                Interval {
+                    start: 0,
+                    end: 2,
+                    phrase: "國民".to_string()
+                },
+                Interval {
+                    start: 2,
+                    end: 3,
+                    phrase: "大".to_string()
+                },
+                Interval {
+                    start: 3,
+                    end: 4,
+                    phrase: "會".to_string()
+                },
+                Interval {
+                    start: 4,
+                    end: 6,
+                    phrase: "代表".to_string()
+                },
+            ],
+            engine.convert_next(&sequence, 2)
+        );
+        assert_eq!(
+            vec![
+                Interval {
+                    start: 0,
+                    end: 2,
+                    phrase: "國民".to_string()
+                },
+                Interval {
+                    start: 2,
+                    end: 4,
+                    phrase: "大會".to_string()
+                },
+                Interval {
+                    start: 4,
+                    end: 5,
+                    phrase: "代".to_string()
+                },
+                Interval {
+                    start: 5,
+                    end: 6,
+                    phrase: "表".to_string()
+                }
+            ],
+            engine.convert_next(&sequence, 3)
+        );
+        assert_eq!(
+            vec![
+                Interval {
+                    start: 0,
+                    end: 1,
+                    phrase: "國".to_string()
+                },
+                Interval {
+                    start: 1,
+                    end: 2,
+                    phrase: "民".to_string()
+                },
+                Interval {
+                    start: 2,
+                    end: 3,
+                    phrase: "大".to_string()
+                },
+                Interval {
+                    start: 3,
+                    end: 4,
+                    phrase: "會".to_string()
+                },
+                Interval {
+                    start: 4,
+                    end: 6,
+                    phrase: "代表".to_string()
+                }
+            ],
+            engine.convert_next(&sequence, 4)
+        );
+        assert_eq!(
+            vec![
+                Interval {
+                    start: 0,
+                    end: 2,
+                    phrase: "國民".to_string()
+                },
+                Interval {
+                    start: 2,
+                    end: 4,
+                    phrase: "大會".to_string()
+                },
+                Interval {
+                    start: 4,
+                    end: 6,
+                    phrase: "代表".to_string()
+                },
+            ],
+            engine.convert_next(&sequence, 8)
         );
     }
 }

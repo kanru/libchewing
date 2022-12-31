@@ -44,7 +44,11 @@ typedef enum KeyboardLayoutCompat {
   Carpalx,
 } KeyboardLayoutCompat;
 
+typedef struct ChewingConversionEngine ChewingConversionEngine;
+
 typedef struct Phrase Phrase;
+
+typedef struct RefCell_LayeredDictionary RefCell_LayeredDictionary;
 
 typedef struct SyllableEditorWithKeymap SyllableEditorWithKeymap;
 
@@ -74,15 +78,31 @@ int32_t PhoneticEditorKbType(struct SyllableEditorWithKeymap *editor_keymap_ptr)
 
 bool PhoneticEditorIsEntering(struct SyllableEditorWithKeymap *editor_keymap_ptr);
 
-void *InitDict(char *prefix);
+struct ChewingConversionEngine *InitConversionEngine(const struct RefCell_LayeredDictionary *dict_ptr);
 
-void TerminateDict(void *dict_ptr);
+void TerminateConversionEngine(struct ChewingConversionEngine *ce_ptr);
 
-void *GetCharFirst(void *dict_ptr, struct Phrase *phrase_ptr, uint16_t syllable_u16);
+void ConversionEngineDoPhrasing(void *pgdata,
+                                struct ChewingConversionEngine *ce_ptr,
+                                uint16_t *syllables_u16_ptr,
+                                uintptr_t syllables_len,
+                                char (*select_strs_ptr)[201],
+                                IntervalType *select_intervals_ptr,
+                                uintptr_t select_len,
+                                int *breaks_u16_ptr,
+                                uintptr_t breaks_len,
+                                IntervalType *display_intervals_ptr,
+                                int *display_intervals_len);
+
+const void *InitDict(char *prefix);
+
+void TerminateDict(const void *dict_ptr);
+
+void *GetCharFirst(const void *dict_ptr, struct Phrase *phrase_ptr, uint16_t syllable_u16);
 
 void *GetPhraseFirst(void *vec_ptr, struct Phrase *phrase_ptr);
 
-void *TreeFindPhrase(void *dict_ptr, int begin, int end, uint16_t *syllables_u16);
+void *TreeFindPhrase(const void *dict_ptr, int begin, int end, uint16_t *syllables_u16);
 
 void *GetVocabNext(void *iter_ptr, struct Phrase *phrase_ptr);
 

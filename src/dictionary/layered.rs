@@ -44,6 +44,7 @@ use super::{
 /// # Ok(())
 /// # }
 /// ```
+#[derive(Debug)]
 pub struct LayeredDictionary {
     inner: Vec<Box<dyn Dictionary>>,
     blocked: Vec<Box<dyn BlockList>>,

@@ -1,6 +1,6 @@
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
-    fmt::Debug,
+    fmt::Debug, rc::Rc, cell::RefCell,
 };
 
 use crate::{
@@ -11,18 +11,14 @@ use crate::{
 use super::{Break, ChineseSequence, ConversionEngine, Interval};
 
 #[derive(Debug)]
-pub struct ChewingConversionEngine<D>
-where
-    D: Dictionary,
+pub struct ChewingConversionEngine
 {
-    dict: D,
+    dict: Rc<RefCell<dyn Dictionary>>,
 }
 
-impl<D> ChewingConversionEngine<D>
-where
-    D: Dictionary,
+impl ChewingConversionEngine
 {
-    pub fn new(dict: D) -> ChewingConversionEngine<D> {
+    pub fn new(dict: Rc<RefCell<dyn Dictionary>>) -> ChewingConversionEngine {
         ChewingConversionEngine { dict }
     }
 
@@ -46,7 +42,7 @@ where
 
         let mut max_freq = 0;
         let mut best_phrase = None;
-        'next_phrase: for phrase in self.dict.lookup_phrase(syllables) {
+        'next_phrase: for phrase in self.dict.borrow().lookup_phrase(syllables) {
             // If there exists a user selected interval which is a
             // sub-interval of this phrase but the substring is
             // different then we can skip this phrase.
@@ -158,11 +154,12 @@ where
     }
 }
 
-impl<D> ConversionEngine for ChewingConversionEngine<D>
-where
-    D: Dictionary,
+impl ConversionEngine for ChewingConversionEngine
 {
     fn convert(&self, sequence: &ChineseSequence) -> Vec<Interval> {
+        if sequence.syllables.is_empty() {
+            return vec![];
+        }
         let mut graph = Graph::default();
         self.find_best_path(&mut graph, sequence, 0, sequence.syllables.len())
             .intervals
@@ -170,6 +167,9 @@ where
 
     fn convert_next(&self, sequence: &ChineseSequence, next: usize) -> Vec<Interval> {
         // TODO: Use modified Yen's algorithm to find the Kth solution
+        if sequence.syllables.is_empty() {
+            return vec![];
+        }
         let mut graph = Graph::default();
         let mut paths =
             self.find_all_paths(&mut graph, sequence, 0, sequence.syllables.len(), None);
@@ -279,19 +279,19 @@ impl Ord for Path {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
     use crate::{
         conversion::{Break, ChineseSequence, ConversionEngine, Interval},
-        dictionary::Phrase,
+        dictionary::{Dictionary, Phrase},
         syl,
         zhuyin::{Bopomofo::*, Syllable},
     };
 
     use super::ChewingConversionEngine;
 
-    fn test_dictionary() -> HashMap<Vec<Syllable>, Vec<Phrase>> {
-        HashMap::from([
+    fn test_dictionary() -> Rc<RefCell<dyn Dictionary>> {
+        Rc::new(RefCell::new(HashMap::from([
             (vec![syl![G, U, O, TONE2]], vec![("國", 1).into()]),
             (vec![syl![M, I, EN, TONE2]], vec![("民", 1).into()]),
             (vec![syl![D, A, TONE4]], vec![("大", 1).into()]),
@@ -319,7 +319,19 @@ mod tests {
                 vec![syl![X, I, EN], syl![K, U, TONE4], syl![I, EN]],
                 vec![("新酷音", 200).into()],
             ),
-        ])
+        ])))
+    }
+
+    #[test]
+    fn convert_empty_sequence() {
+        let dict = test_dictionary();
+        let engine = ChewingConversionEngine::new(dict);
+        let sequence = ChineseSequence {
+            syllables: vec![],
+            selections: vec![],
+            breaks: vec![],
+        };
+        assert_eq!(Vec::<Interval>::new(), engine.convert(&sequence));
     }
 
     #[test]

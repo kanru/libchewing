@@ -570,7 +570,7 @@ static void Discard2(TreeDataType *ptd)
     ptd->nInterval = nInterval2;
 }
 
-static void FillPreeditBuf(ChewingData *pgdata, char *phrase, int from, int to)
+void FillPreeditBuf(ChewingData *pgdata, char *phrase, int from, int to)
 {
     int i;
     int start = 0;
@@ -599,9 +599,21 @@ static void OutputRecordStr(ChewingData *pgdata, const TreeDataType *ptd)
         FillPreeditBuf(pgdata, inter.p_phr->phrase, inter.from, inter.to);
     }
 
-    for (i = 0; i < pgdata->nSelect; i++) {
-        FillPreeditBuf(pgdata, pgdata->selectStr[i], pgdata->selectInterval[i].from, pgdata->selectInterval[i].to);
+    // XXX: This seems to be dead code
+    // for (i = 0; i < pgdata->nSelect; i++) {
+    //     FillPreeditBuf(pgdata, pgdata->selectStr[i], pgdata->selectInterval[i].from, pgdata->selectInterval[i].to);
+    // }
+}
+
+static void SaveDispInterval(PhrasingOutput *ppo, TreeDataType *ptd)
+{
+    int i;
+
+    for (i = 0; i < ptd->phList->nInter; i++) {
+        ppo->dispInterval[i].from = ptd->interval[ptd->phList->arrIndex[i]].from;
+        ppo->dispInterval[i].to = ptd->interval[ptd->phList->arrIndex[i]].to;
     }
+    ppo->nDispInterval = ptd->phList->nInter;
 }
 
 static int rule_largest_sum(const int *record, int nRecord, const TreeDataType *ptd)
@@ -781,17 +793,6 @@ static void SaveList(TreeDataType *ptd)
 static void InitPhrasing(TreeDataType *ptd)
 {
     memset(ptd, 0, sizeof(TreeDataType));
-}
-
-static void SaveDispInterval(PhrasingOutput *ppo, TreeDataType *ptd)
-{
-    int i;
-
-    for (i = 0; i < ptd->phList->nInter; i++) {
-        ppo->dispInterval[i].from = ptd->interval[ptd->phList->arrIndex[i]].from;
-        ppo->dispInterval[i].to = ptd->interval[ptd->phList->arrIndex[i]].to;
-    }
-    ppo->nDispInterval = ptd->phList->nInter;
 }
 
 static void CleanUpMem(TreeDataType *ptd)

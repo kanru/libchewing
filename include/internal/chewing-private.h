@@ -295,7 +295,8 @@ typedef struct ChewingData {
     void *loggerData;
 
 #if HAVE_RUST
-    void *dict;
+    const void *dict;
+    void *ce;
     void *ue;
 #endif
 } ChewingData;

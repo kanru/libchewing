@@ -770,8 +770,24 @@ int CallPhrasing(ChewingData *pgdata, int all_phrasing)
 
     ShowChewingData(pgdata);
 
+#ifdef HAVE_RUST
+    ConversionEngineDoPhrasing(
+        pgdata,
+        pgdata->ce,
+        pgdata->phoneSeq,
+        pgdata->nPhoneSeq,
+        pgdata->selectStr,
+        pgdata->selectInterval,
+        pgdata->nSelect,
+        pgdata->bArrBrkpt,
+        MAX_PHONE_SEQ_LEN + 1,
+        pgdata->phrOut.dispInterval,
+        &pgdata->phrOut.nDispInterval
+    );
+#else
     /* then phrasing */
     Phrasing(pgdata, all_phrasing);
+#endif
 
     /* and then make prefer interval */
     MakePreferInterval(pgdata);

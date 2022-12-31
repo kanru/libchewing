@@ -22,6 +22,7 @@ pub enum SqliteDictionaryError {
     },
 }
 
+#[derive(Debug)]
 pub struct SqliteDictionary {
     conn: Connection,
     info: DictionaryInfo,

@@ -3,7 +3,7 @@
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    fmt::Display,
+    fmt::{Debug, Display},
     path::Path,
 };
 
@@ -49,7 +49,7 @@ pub struct DuplicatePhraseError;
 /// assert_eq!("LGPL-2.1-or-later", about.license.unwrap());
 /// assert_eq!("init_database 0.5.1", about.software.unwrap());
 /// ```
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct DictionaryInfo {
     /// The name of the dictionary.
     pub name: Option<String>,
@@ -275,7 +275,7 @@ pub type DictEntries<'a> = Box<dyn Iterator<Item = (Vec<Syllable>, Phrase)> + 'a
 /// # Ok(())
 /// # }
 /// ```
-pub trait Dictionary {
+pub trait Dictionary: Debug {
     /// Returns an iterator to all single syllable words matched by the
     /// syllable, if any. The result should use a stable order each time for the
     /// same input.
@@ -429,7 +429,7 @@ impl DictionaryMut for HashMap<Vec<Syllable>, Vec<Phrase>> {
 }
 
 /// A block list contains unwanted phrases.
-pub trait BlockList {
+pub trait BlockList: Debug {
     /// Returns if whether a phrase is in the block list.
     fn is_blocked(&self, phrase: &str) -> bool;
 }

@@ -1,14 +1,16 @@
 use std::{
+    cell::RefCell,
     ffi::{c_void, CStr, CString},
     os::raw::{c_char, c_int},
     path::Path,
+    rc::Rc,
     slice,
 };
 
 use chewing::dictionary::{Dictionary, LayeredDictionary, SqliteDictionary, TrieDictionary};
 
 #[no_mangle]
-pub extern "C" fn InitDict(prefix: *mut c_char) -> *mut c_void {
+pub extern "C" fn InitDict(prefix: *mut c_char) -> *const c_void {
     let prefix = unsafe { CStr::from_ptr(prefix) }
         .to_str()
         .expect("Invalid prefix string");
@@ -40,18 +42,21 @@ pub extern "C" fn InitDict(prefix: *mut c_char) -> *mut c_void {
         );
     };
 
-    let dict = Box::new(LayeredDictionary::new(vec![word_db, tsi_db], vec![]));
+    let dict = Rc::new(RefCell::new(LayeredDictionary::new(
+        vec![word_db, tsi_db],
+        vec![],
+    )));
 
-    Box::into_raw(dict).cast()
+    Rc::into_raw(dict).cast()
 }
 
 #[no_mangle]
-pub extern "C" fn TerminateDict(dict_ptr: *mut c_void) {
+pub extern "C" fn TerminateDict(dict_ptr: *const c_void) {
     if dict_ptr.is_null() {
         return;
     }
-    let dict_ptr: *mut LayeredDictionary = dict_ptr.cast();
-    unsafe { Box::from_raw(dict_ptr) };
+    let dict_ptr: *const RefCell<LayeredDictionary> = dict_ptr.cast();
+    unsafe { Rc::from_raw(dict_ptr) };
 }
 
 #[repr(C)]
@@ -62,16 +67,16 @@ pub struct Phrase {
 
 #[no_mangle]
 pub extern "C" fn GetCharFirst(
-    dict_ptr: *mut c_void,
+    dict_ptr: *const c_void,
     phrase_ptr: *mut Phrase,
     syllable_u16: u16,
 ) -> *mut c_void {
-    let dict_ptr: *mut LayeredDictionary = dict_ptr.cast();
+    let dict_ptr: *const RefCell<LayeredDictionary> = dict_ptr.cast();
     let dict = unsafe { dict_ptr.as_ref() }.expect("Null pointer");
     let syllable = syllable_u16
         .try_into()
         .expect("Unable to convert u16 to syllable");
-    let words = dict.lookup_word(syllable).collect::<Vec<_>>();
+    let words = dict.borrow().lookup_word(syllable).collect::<Vec<_>>();
     let mut iter = Box::new(
         Box::new(words.into_iter()) as Box<dyn Iterator<Item = chewing::dictionary::Phrase>>
     );
@@ -111,12 +116,12 @@ pub extern "C" fn GetPhraseFirst(vec_ptr: *mut c_void, phrase_ptr: *mut Phrase) 
 
 #[no_mangle]
 pub extern "C" fn TreeFindPhrase(
-    dict_ptr: *mut c_void,
+    dict_ptr: *const c_void,
     begin: c_int,
     end: c_int,
     syllables_u16: *mut u16,
 ) -> *mut c_void {
-    let dict_ptr: *mut LayeredDictionary = dict_ptr.cast();
+    let dict_ptr: *const RefCell<LayeredDictionary> = dict_ptr.cast();
     let dict = unsafe { dict_ptr.as_ref() }.expect("Null pointer");
     let syllables_u16 = unsafe { slice::from_raw_parts(syllables_u16, 50) };
     let begin = begin as usize;
@@ -129,7 +134,11 @@ pub extern "C" fn TreeFindPhrase(
                 .expect("Unable to convert u16 to syllable")
         })
         .collect::<Vec<_>>();
-    let phrases = Box::new(dict.lookup_phrase(syllables.as_slice()).collect::<Vec<_>>());
+    let phrases = Box::new(
+        dict.borrow()
+            .lookup_phrase(syllables.as_slice())
+            .collect::<Vec<_>>(),
+    );
     if !phrases.is_empty() {
         return Box::into_raw(phrases).cast();
     }

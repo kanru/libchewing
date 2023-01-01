@@ -9,13 +9,7 @@ use chewing::{
     conversion::{Break, ChewingConversionEngine, ChineseSequence, ConversionEngine, Interval},
     dictionary::LayeredDictionary,
 };
-
-/// cbindgen:ignore
-#[repr(C)]
-pub struct IntervalType {
-    from: c_int,
-    to: c_int,
-}
+use chewing_public::types::IntervalType;
 
 #[no_mangle]
 pub extern "C" fn InitConversionEngine(
@@ -90,7 +84,7 @@ pub extern "C" fn ConversionEngineDoPhrasing(
         selections,
         breaks,
     };
-    let intervals = ce.convert_next(&sequence, 0);
+    let intervals = ce.convert(&sequence);
 
     let display_intervals =
         unsafe { slice::from_raw_parts_mut(display_intervals_ptr, intervals.len()) };

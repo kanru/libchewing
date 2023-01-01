@@ -118,12 +118,12 @@ int HaninSymbolInput(ChewingData *pgdata)
     AvailInfo *pai = &(pgdata->availInfo);
 
     /* No available symbol table */
-    if (!pgdata->static_data.symbol_table)
+    if (!pgdata->staticData.symbolTable)
         return BOPOMOFO_ABSORB;
 
     pci->nTotalChoice = 0;
-    for (i = 0; i < pgdata->static_data.n_symbol_entry; i++) {
-        strcpy(pci->totalChoiceStr[pci->nTotalChoice], pgdata->static_data.symbol_table[i]->category);
+    for (i = 0; i < pgdata->staticData.nSymbolEntry; i++) {
+        strcpy(pci->totalChoiceStr[pci->nTotalChoice], pgdata->staticData.symbolTable[i]->category);
         pci->nTotalChoice++;
     }
     pai->avail[0].len = 1;
@@ -296,15 +296,15 @@ int EasySymbolInput(int key, ChewingData *pgdata)
 
     _index = FindEasySymbolIndex(key);
     if (-1 != _index) {
-        for (loop = 0; loop < pgdata->static_data.g_easy_symbol_num[_index]; ++loop) {
-            ueStrNCpy(wordbuf, ueStrSeek(pgdata->static_data.g_easy_symbol_value[_index], loop), 1, 1);
+        for (loop = 0; loop < pgdata->staticData.gEasySymbolNum[_index]; ++loop) {
+            ueStrNCpy(wordbuf, ueStrSeek(pgdata->staticData.gEasySymbolValue[_index], loop), 1, 1);
             (void) _Inner_InternalSpecialSymbol(key, pgdata, key, wordbuf);
         }
         return SYMBOL_KEY_OK;
     }
 
     rtn = InternalSpecialSymbol(key, pgdata, nSpecial,
-                                G_EASY_SYMBOL_KEY, (const char **) pgdata->static_data.g_easy_symbol_value);
+                                G_EASY_SYMBOL_KEY, (const char **) pgdata->staticData.gEasySymbolValue);
     if (rtn == BOPOMOFO_IGNORE)
         rtn = SpecialSymbolInput(key, pgdata);
     return (rtn == BOPOMOFO_IGNORE ? SYMBOL_KEY_ERROR : SYMBOL_KEY_OK);
@@ -316,10 +316,10 @@ int SymbolChoice(ChewingData *pgdata, int sel_i)
     int symbol_type;
     int key;
 
-    if (!pgdata->static_data.symbol_table && pgdata->choiceInfo.isSymbol != SYMBOL_CHOICE_UPDATE)
+    if (!pgdata->staticData.symbolTable && pgdata->choiceInfo.isSymbol != SYMBOL_CHOICE_UPDATE)
         return BOPOMOFO_ABSORB;
 
-    if (pgdata->choiceInfo.isSymbol == SYMBOL_CATEGORY_CHOICE && 0 == pgdata->static_data.symbol_table[sel_i]->nSymbols)
+    if (pgdata->choiceInfo.isSymbol == SYMBOL_CATEGORY_CHOICE && 0 == pgdata->staticData.symbolTable[sel_i]->nSymbols)
         symbol_type = SYMBOL_CHOICE_INSERT;
     else
         symbol_type = pgdata->choiceInfo.isSymbol;
@@ -331,9 +331,9 @@ int SymbolChoice(ChewingData *pgdata, int sel_i)
 
         /* Display all symbols in this category */
         pci->nTotalChoice = 0;
-        for (i = 0; i < pgdata->static_data.symbol_table[sel_i]->nSymbols; i++) {
+        for (i = 0; i < pgdata->staticData.symbolTable[sel_i]->nSymbols; i++) {
             ueStrNCpy(pci->totalChoiceStr[pci->nTotalChoice],
-                      pgdata->static_data.symbol_table[sel_i]->symbols[i], 1, 1);
+                      pgdata->staticData.symbolTable[sel_i]->symbols[i], 1, 1);
             pci->nTotalChoice++;
         }
         pai->avail[0].len = 1;
@@ -894,8 +894,8 @@ int MakeOutput(ChewingOutput *pgo, ChewingData *pgdata)
     }
 
     /* fill point */
-    pgo->PointStart = pgdata->PointStart;
-    pgo->PointEnd = pgdata->PointEnd;
+    pgo->pointStart = pgdata->pointStart;
+    pgo->pointEnd = pgdata->pointEnd;
 
     /* fill other fields */
     pgo->chiSymbolBufLen = pgdata->chiSymbolBufLen;
@@ -1314,8 +1314,8 @@ int InitSymbolTable(ChewingData *pgdata, const char *prefix)
     size_t size;
     int ret = -1;
 
-    pgdata->static_data.n_symbol_entry = 0;
-    pgdata->static_data.symbol_table = NULL;
+    pgdata->staticData.nSymbolEntry = 0;
+    pgdata->staticData.symbolTable = NULL;
 
     ret = asprintf(&filename, "%s" PLAT_SEPARATOR "%s", prefix, SYMBOL_TABLE_FILE);
     if (ret == -1)
@@ -1335,7 +1335,7 @@ int InitSymbolTable(ChewingData *pgdata, const char *prefix)
     if (!entry)
         goto error;
 
-    while (fgets(line, LINE_LEN, file) && pgdata->static_data.n_symbol_entry < MAX_SYMBOL_ENTRY) {
+    while (fgets(line, LINE_LEN, file) && pgdata->staticData.nSymbolEntry < MAX_SYMBOL_ENTRY) {
 
         category_end = strpbrk(line, "=\r\n");
         if (!category_end)
@@ -1347,44 +1347,44 @@ int InitSymbolTable(ChewingData *pgdata, const char *prefix)
             *symbols_end = 0;
             len = ueStrLen(symbols);
 
-            entry[pgdata->static_data.n_symbol_entry] =
+            entry[pgdata->staticData.nSymbolEntry] =
                 (SymbolEntry *) malloc(sizeof(entry[0][0]) + sizeof(entry[0][0].symbols[0]) * len);
-            if (!entry[pgdata->static_data.n_symbol_entry])
+            if (!entry[pgdata->staticData.nSymbolEntry])
                 goto error;
-            entry[pgdata->static_data.n_symbol_entry]
+            entry[pgdata->staticData.nSymbolEntry]
                 ->nSymbols = len;
 
             symbol = symbols;
 
             for (i = 0; i < len; ++i) {
-                ueStrNCpy(entry[pgdata->static_data.n_symbol_entry]->symbols[i], symbol, 1, 1);
+                ueStrNCpy(entry[pgdata->staticData.nSymbolEntry]->symbols[i], symbol, 1, 1);
                 // FIXME: What if symbol is combining sequences.
                 symbol += ueBytesFromChar(symbol[0]);
             }
 
 
         } else {
-            entry[pgdata->static_data.n_symbol_entry] = (SymbolEntry *) malloc(sizeof(entry[0][0]));
-            if (!entry[pgdata->static_data.n_symbol_entry])
+            entry[pgdata->staticData.nSymbolEntry] = (SymbolEntry *) malloc(sizeof(entry[0][0]));
+            if (!entry[pgdata->staticData.nSymbolEntry])
                 goto error;
 
-            entry[pgdata->static_data.n_symbol_entry]
+            entry[pgdata->staticData.nSymbolEntry]
                 ->nSymbols = 0;
         }
 
         *category_end = 0;
-        ueStrNCpy(entry[pgdata->static_data.n_symbol_entry]->category, line, MAX_PHRASE_LEN, 1);
+        ueStrNCpy(entry[pgdata->staticData.nSymbolEntry]->category, line, MAX_PHRASE_LEN, 1);
 
-        ++pgdata->static_data.n_symbol_entry;
+        ++pgdata->staticData.nSymbolEntry;
     }
 
-    size = sizeof(*pgdata->static_data.symbol_table) * pgdata->static_data.n_symbol_entry;
+    size = sizeof(*pgdata->staticData.symbolTable) * pgdata->staticData.nSymbolEntry;
     if (!size)
         goto end;
-    pgdata->static_data.symbol_table = (SymbolEntry **) malloc(size);
-    if (!pgdata->static_data.symbol_table)
+    pgdata->staticData.symbolTable = (SymbolEntry **) malloc(size);
+    if (!pgdata->staticData.symbolTable)
         goto error;
-    memcpy(pgdata->static_data.symbol_table, entry, size);
+    memcpy(pgdata->staticData.symbolTable, entry, size);
 
     ret = 0;
   end:
@@ -1395,7 +1395,7 @@ int InitSymbolTable(ChewingData *pgdata, const char *prefix)
     return ret;
 
   error:
-    for (i = 0; i < pgdata->static_data.n_symbol_entry; ++i) {
+    for (i = 0; i < pgdata->staticData.nSymbolEntry; ++i) {
         free(entry[i]);
     }
     goto end;
@@ -1405,12 +1405,12 @@ void TerminateSymbolTable(ChewingData *pgdata)
 {
     unsigned int i;
 
-    if (pgdata->static_data.symbol_table) {
-        for (i = 0; i < pgdata->static_data.n_symbol_entry; ++i)
-            free(pgdata->static_data.symbol_table[i]);
-        free(pgdata->static_data.symbol_table);
-        pgdata->static_data.n_symbol_entry = 0;
-        pgdata->static_data.symbol_table = NULL;
+    if (pgdata->staticData.symbolTable) {
+        for (i = 0; i < pgdata->staticData.nSymbolEntry; ++i)
+            free(pgdata->staticData.symbolTable[i]);
+        free(pgdata->staticData.symbolTable);
+        pgdata->staticData.nSymbolEntry = 0;
+        pgdata->staticData.symbolTable = NULL;
     }
 }
 
@@ -1462,9 +1462,9 @@ int InitEasySymbolInput(ChewingData *pgdata, const char *prefix)
 
         ueStrNCpy(symbol, &line[2], len, 1);
 
-        free(pgdata->static_data.g_easy_symbol_value[_index]);
-        pgdata->static_data.g_easy_symbol_value[_index] = symbol;
-        pgdata->static_data.g_easy_symbol_num[_index] = len;
+        free(pgdata->staticData.gEasySymbolValue[_index]);
+        pgdata->staticData.gEasySymbolValue[_index] = symbol;
+        pgdata->staticData.gEasySymbolNum[_index] = len;
     }
     ret = 0;
 
@@ -1486,11 +1486,11 @@ void TerminateEasySymbolTable(ChewingData *pgdata)
     unsigned int i;
 
     for (i = 0; i < EASY_SYMBOL_KEY_TAB_LEN; ++i) {
-        if (NULL != pgdata->static_data.g_easy_symbol_value[i]) {
-            free(pgdata->static_data.g_easy_symbol_value[i]);
-            pgdata->static_data.g_easy_symbol_value[i] = NULL;
+        if (NULL != pgdata->staticData.gEasySymbolValue[i]) {
+            free(pgdata->staticData.gEasySymbolValue[i]);
+            pgdata->staticData.gEasySymbolValue[i] = NULL;
         }
-        pgdata->static_data.g_easy_symbol_num[i] = 0;
+        pgdata->staticData.gEasySymbolNum[i] = 0;
     }
 }
 

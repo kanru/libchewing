@@ -17,4 +17,4 @@ thiserror = "1.0.0"
 tempfile = "3"
 
 [workspace]
-members = ["tools", "internal"]
+members = ["tools", "capi/chewing-internal", "capi/chewing-public"]

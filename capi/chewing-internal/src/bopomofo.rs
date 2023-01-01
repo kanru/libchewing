@@ -6,7 +6,6 @@ use chewing::editor::{
     SyllableEditor,
 };
 
-#[repr(C)]
 pub struct SyllableEditorWithKeymap {
     kb_type: KeyboardLayoutCompat,
     keymap: Box<dyn Keymap>,

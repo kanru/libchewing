@@ -46,6 +46,7 @@
 #define MAX_UTF8_SIZE 4
 
 
+#ifndef HAVE_RUST
 struct ChewingData;
 typedef struct UserPhraseData {
     uint16_t phoneSeq[MAX_PHONE_SEQ_LEN];
@@ -55,8 +56,6 @@ typedef struct UserPhraseData {
     int origfreq;               /* the initial frequency of this phrase */
     int maxfreq;                /* the maximum frequency of the phrase of the same pid */
 } UserPhraseData;
-
-#ifndef HAVE_RUST
 
 /* Forward declaration */
 

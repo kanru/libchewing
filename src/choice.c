@@ -71,7 +71,11 @@ static void SetAvailInfo(ChewingData *pgdata, int begin, int end)
     const int *bSymbolArrBrkpt = pgdata->bSymbolArrBrkpt;
     int symbolArrBrkpt[ARRAY_SIZE(pgdata->bSymbolArrBrkpt)] = { 0 };
 
+#ifdef HAVE_RUST
+    const void* tree_pos;
+#else
     const TreeType *tree_pos;
+#endif
     int diff;
     uint16_t userPhoneSeq[MAX_PHONE_SEQ_LEN];
 
@@ -141,7 +145,7 @@ static void SetAvailInfo(ChewingData *pgdata, int begin, int end)
             memcpy(userPhoneSeq, &phoneSeq[head_tmp], sizeof(uint16_t) * (diff + 1));
             userPhoneSeq[diff + 1] = 0;
 #ifdef HAVE_RUST
-            if (UserGetPhraseFirst(pgdata->ue, &pgdata->userphrase_data, userPhoneSeq)) {
+            if (UserGetPhraseFirst(pgdata->ue, &pgdata->userphraseData, userPhoneSeq)) {
 #else
             if (UserGetPhraseFirst(pgdata, userPhoneSeq)) {
 #endif
@@ -370,11 +374,11 @@ static void SetChoiceInfo(ChewingData *pgdata)
         memcpy(userPhoneSeq, &phoneSeq[cursor], sizeof(uint16_t) * len);
         userPhoneSeq[len] = 0;
 #ifdef HAVE_RUST
-        void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphrase_data, userPhoneSeq);
+        void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphraseData, userPhoneSeq);
         if (iter == NULL) {
             pUserPhraseData = NULL;
         } else {
-            pUserPhraseData = &pgdata->userphrase_data;
+            pUserPhraseData = &pgdata->userphraseData;
         }
 #else
         pUserPhraseData = UserGetPhraseFirst(pgdata, userPhoneSeq);
@@ -388,7 +392,7 @@ static void SetChoiceInfo(ChewingData *pgdata)
                 ueStrNCpy(pci->totalChoiceStr[pci->nTotalChoice], pUserPhraseData->wordSeq, len, 1);
                 pci->nTotalChoice++;
 #ifdef HAVE_RUST
-            } while ((iter = UserGetPhraseNext(iter, &pgdata->userphrase_data)) != NULL);
+            } while ((iter = UserGetPhraseNext(iter, &pgdata->userphraseData)) != NULL);
         }
 #else
             } while ((pUserPhraseData = UserGetPhraseNext(pgdata, userPhoneSeq)) != NULL);

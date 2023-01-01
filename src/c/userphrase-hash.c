@@ -178,7 +178,7 @@ int UserUpdatePhrase(ChewingData *pgdata, const uint16_t phoneSeq[], const char 
         data.maxfreq = LoadMaxFreq(pgdata, phoneSeq, len);
 
         data.userfreq = data.origfreq;
-        data.recentTime = pgdata->static_data.chewing_lifetime;
+        data.recentTime = pgdata->staticData.chewing_lifetime;
         pItem = HashInsert(pgdata, &data);
         DestroyUserPhraseData(&data);
         LogUserPhrase(pgdata, phoneSeq, wordSeq, pItem->data.origfreq, pItem->data.maxfreq, pItem->data.userfreq,
@@ -190,8 +190,8 @@ int UserUpdatePhrase(ChewingData *pgdata, const uint16_t phoneSeq[], const char 
         pItem->data.userfreq = UpdateFreq(pItem->data.userfreq,
                                           pItem->data.maxfreq,
                                           pItem->data.origfreq,
-                                          pgdata->static_data.chewing_lifetime - pItem->data.recentTime);
-        pItem->data.recentTime = pgdata->static_data.chewing_lifetime;
+                                          pgdata->staticData.chewing_lifetime - pItem->data.recentTime);
+        pItem->data.recentTime = pgdata->staticData.chewing_lifetime;
         LogUserPhrase(pgdata, phoneSeq, wordSeq, pItem->data.origfreq, pItem->data.maxfreq, pItem->data.userfreq,
                       pItem->data.recentTime);
         HashModify(pgdata, pItem);
@@ -260,5 +260,5 @@ void IncreaseLifeTime(ChewingData *pgdata)
 {
     assert(pgdata);
 
-    ++pgdata->static_data.chewing_lifetime;
+    ++pgdata->staticData.chewing_lifetime;
 }

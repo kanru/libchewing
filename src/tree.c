@@ -79,8 +79,8 @@ static int PhraseIntervalIntersect(PhraseIntervalType in1, PhraseIntervalType in
 #ifndef HAVE_RUST
 void TerminateTree(ChewingData *pgdata)
 {
-    pgdata->static_data.tree = NULL;
-    plat_mmap_close(&pgdata->static_data.tree_mmap);
+    pgdata->staticData.tree = NULL;
+    plat_mmap_close(&pgdata->staticData.tree_mmap);
 }
 
 
@@ -94,20 +94,19 @@ int InitTree(ChewingData *pgdata, const char *prefix)
     if (len + 1 > sizeof(filename))
         return -1;
 
-    plat_mmap_set_invalid(&pgdata->static_data.tree_mmap);
-    pgdata->static_data.tree_size = plat_mmap_create(&pgdata->static_data.tree_mmap, filename, FLAG_ATTRIBUTE_READ);
-    if (pgdata->static_data.tree_size <= 0)
+    plat_mmap_set_invalid(&pgdata->staticData.tree_mmap);
+    pgdata->staticData.tree_size = plat_mmap_create(&pgdata->staticData.tree_mmap, filename, FLAG_ATTRIBUTE_READ);
+    if (pgdata->staticData.tree_size <= 0)
         return -1;
 
     offset = 0;
-    pgdata->static_data.tree =
-        (const TreeType *) plat_mmap_set_view(&pgdata->static_data.tree_mmap, &offset, &pgdata->static_data.tree_size);
-    if (!pgdata->static_data.tree)
+    pgdata->staticData.tree =
+        (const TreeType *) plat_mmap_set_view(&pgdata->staticData.tree_mmap, &offset, &pgdata->staticData.tree_size);
+    if (!pgdata->staticData.tree)
         return -1;
 
     return 0;
 }
-#endif
 
 static int CheckBreakpoint(int from, int to, int bArrBrkpt[])
 {
@@ -153,8 +152,8 @@ static int CheckUserChoose(ChewingData *pgdata,
      * also store the phrase with highest freq
      */
 #ifdef HAVE_RUST
-    void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphrase_data, new_phoneSeq);
-    pUserPhraseData = &pgdata->userphrase_data;
+    void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphraseData, new_phoneSeq);
+    pUserPhraseData = &pgdata->userphraseData;
     if (iter == NULL)
 #else
     pUserPhraseData = UserGetPhraseFirst(pgdata, new_phoneSeq);
@@ -191,7 +190,7 @@ static int CheckUserChoose(ChewingData *pgdata,
             }
         }
 #ifdef HAVE_RUST
-    } while ((iter = UserGetPhraseNext(iter, &pgdata->userphrase_data)) != NULL);
+    } while ((iter = UserGetPhraseNext(iter, &pgdata->userphraseData)) != NULL);
 #else
     } while ((pUserPhraseData = UserGetPhraseNext(pgdata, new_phoneSeq)) != NULL);
     UserGetPhraseEnd(pgdata, new_phoneSeq);
@@ -264,7 +263,6 @@ static int CompTreeType(const void *a, const void *b)
     return GetUint16(((TreeType *) a)->key) - GetUint16(((TreeType *) b)->key);
 }
 
-#ifndef HAVE_RUST
 /** @brief search for the phrases have the same pronunciation.*/
 /* if phoneSeq[begin] ~ phoneSeq[end] is a phrase, then add an interval
  * from (begin) to (end+1)
@@ -272,7 +270,7 @@ static int CompTreeType(const void *a, const void *b)
 const TreeType *TreeFindPhrase(ChewingData *pgdata, int begin, int end, const uint16_t *phoneSeq)
 {
     TreeType target;
-    const TreeType *tree_p = pgdata->static_data.tree;
+    const TreeType *tree_p = pgdata->staticData.tree;
     uint32_t range[2];
     int i;
 
@@ -281,7 +279,7 @@ const TreeType *TreeFindPhrase(ChewingData *pgdata, int begin, int end, const ui
         range[0] = GetUint24(tree_p->child.begin);
         range[1] = GetUint24(tree_p->child.end);
         assert(range[1] >= range[0]);
-        tree_p = (const TreeType *) bsearch(&target, pgdata->static_data.tree + range[0],
+        tree_p = (const TreeType *) bsearch(&target, pgdata->staticData.tree + range[0],
                                             range[1] - range[0], sizeof(TreeType), CompTreeType);
 
         /* if not found any word then fail. */
@@ -290,7 +288,7 @@ const TreeType *TreeFindPhrase(ChewingData *pgdata, int begin, int end, const ui
     }
 
     /* If its child has no key value of 0, then it is only a "half" phrase. */
-    if (GetUint16(pgdata->static_data.tree[GetUint24(tree_p->child.begin)].key) != 0)
+    if (GetUint16(pgdata->staticData.tree[GetUint24(tree_p->child.begin)].key) != 0)
         return NULL;
     return tree_p;
 }
@@ -300,10 +298,9 @@ const TreeType *TreeFindPhrase(ChewingData *pgdata, int begin, int end, const ui
  */
 void TreeChildRange(ChewingData *pgdata, const TreeType *parent)
 {
-    pgdata->static_data.tree_cur_pos = pgdata->static_data.tree + GetUint24(parent->child.begin);
-    pgdata->static_data.tree_end_pos = pgdata->static_data.tree + GetUint24(parent->child.end);
+    pgdata->staticData.tree_cur_pos = pgdata->staticData.tree + GetUint24(parent->child.begin);
+    pgdata->staticData.tree_end_pos = pgdata->staticData.tree + GetUint24(parent->child.end);
 }
-#endif
 
 static void AddInterval(TreeDataType *ptd, int begin, int end, Phrase *p_phrase, int dict_or_user)
 {
@@ -366,11 +363,11 @@ static void FindInterval(ChewingData *pgdata, TreeDataType *ptd)
             i_used_phrase = USED_PHRASE_NONE;
 
 #ifdef HAVE_RUST
-            void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphrase_data, new_phoneSeq);
+            void *iter = UserGetPhraseFirst(pgdata->ue, &pgdata->userphraseData, new_phoneSeq);
             if (iter == NULL) {
                 userphrase = NULL;
             } else {
-                userphrase = &pgdata->userphrase_data;
+                userphrase = &pgdata->userphraseData;
             }
 #else
             userphrase = UserGetPhraseFirst(pgdata, new_phoneSeq);
@@ -569,6 +566,7 @@ static void Discard2(TreeDataType *ptd)
             free(ptd->interval[i].p_phr);
     ptd->nInterval = nInterval2;
 }
+#endif
 
 void FillPreeditBuf(ChewingData *pgdata, char *phrase, int from, int to)
 {
@@ -587,7 +585,7 @@ void FillPreeditBuf(ChewingData *pgdata, char *phrase, int from, int to)
         ueStrNCpy(pgdata->preeditBuf[i].char_, ueStrSeek(phrase, i - start), 1, STRNCPY_CLOSE);
     }
 }
-
+#ifndef HAVE_RUST
 /* kpchen said, record is the index array of interval */
 static void OutputRecordStr(ChewingData *pgdata, const TreeDataType *ptd)
 {
@@ -1074,3 +1072,4 @@ int Phrasing(ChewingData *pgdata, int all_phrasing)
     CleanUpMem(&treeData);
     return 0;
 }
+#endif

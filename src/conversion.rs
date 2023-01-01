@@ -7,8 +7,10 @@ pub struct Interval {
     pub phrase: String,
 }
 
+#[derive(Debug)]
 pub struct Break(pub usize);
 
+#[derive(Debug)]
 pub struct ChineseSequence {
     pub syllables: Vec<Syllable>,
     pub selections: Vec<Interval>,
@@ -21,5 +23,7 @@ pub trait ConversionEngine {
 }
 
 mod chewing_conversion;
+mod tree_conversion;
 
 pub use chewing_conversion::ChewingConversionEngine;
+pub use tree_conversion::TreeConversionEngine;

@@ -1,6 +1,8 @@
 use std::{
+    cell::RefCell,
     collections::{hash_map::Entry, HashMap, HashSet},
-    fmt::Debug, rc::Rc, cell::RefCell,
+    fmt::Debug,
+    rc::Rc,
 };
 
 use crate::{
@@ -11,13 +13,11 @@ use crate::{
 use super::{Break, ChineseSequence, ConversionEngine, Interval};
 
 #[derive(Debug)]
-pub struct ChewingConversionEngine
-{
+pub struct ChewingConversionEngine {
     dict: Rc<RefCell<dyn Dictionary>>,
 }
 
-impl ChewingConversionEngine
-{
+impl ChewingConversionEngine {
     pub fn new(dict: Rc<RefCell<dyn Dictionary>>) -> ChewingConversionEngine {
         ChewingConversionEngine { dict }
     }
@@ -154,8 +154,7 @@ impl ChewingConversionEngine
     }
 }
 
-impl ConversionEngine for ChewingConversionEngine
-{
+impl ConversionEngine for ChewingConversionEngine {
     fn convert(&self, sequence: &ChineseSequence) -> Vec<Interval> {
         if sequence.syllables.is_empty() {
             return vec![];
@@ -279,7 +278,7 @@ impl Ord for Path {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, cell::RefCell, rc::Rc};
+    use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
     use crate::{
         conversion::{Break, ChineseSequence, ConversionEngine, Interval},

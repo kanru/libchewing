@@ -99,6 +99,8 @@
 #    define END_IGNORE_DEPRECATIONS
 #endif
 
+#ifndef HAVE_RUST
+
 #define MIN_SELKEY 1
 #define MAX_SELKEY 10
 
@@ -143,6 +145,8 @@ typedef struct ChewingContext ChewingContext;
 /** @brief use "asdfzxcv89" as selection key
  */
 #define HSU_SELKEY_TYPE2 2
+
+#endif
 
 /* *INDENT-OFF* */
 #endif

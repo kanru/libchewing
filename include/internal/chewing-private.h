@@ -40,7 +40,20 @@ typedef SSIZE_T ssize_t;
 
 #ifdef HAVE_RUST
 #include "chewing_internal.h"
+#ifndef _MSC_VER
+#    undef max
+static inline int max(int a, int b)
+{
+    return a > b ? a : b;
+}
+
+#    undef min
+static inline int min(int a, int b)
+{
+    return a < b ? a : b;
+}
 #endif
+#else
 
 #define MAX_UTF8_SIZE 4
 #define BOPOMOFO_SIZE 4
@@ -352,6 +365,8 @@ typedef struct Phrase {
     char phrase[MAX_PHRASE_LEN * MAX_UTF8_SIZE + 1];
     int freq;
 } Phrase;
+
+#endif
 
 /* *INDENT-OFF* */
 #endif

@@ -101,7 +101,15 @@ version = "0.5.1-alpha.1"
 dependencies = [
  "cbindgen",
  "chewing",
- "ffi-opaque",
+ "chewing-public",
+]
+
+[[package]]
+name = "chewing-public"
+version = "0.5.1-alpha.1"
+dependencies = [
+ "cbindgen",
+ "chewing",
 ]
 
 [[package]]
@@ -228,12 +236,6 @@ checksum = "a7a407cfaa3385c4ae6b23e84623d48c2798d06e3e6a1878f7f59f17b3f86499"
 dependencies = [
  "instant",
 ]
-
-[[package]]
-name = "ffi-opaque"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec54ac60a7f2ee9a97cad9946f9bf629a3bc6a7ae59e68983dc9318f5a54b81a"
 
 [[package]]
 name = "getrandom"

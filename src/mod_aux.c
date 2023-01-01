@@ -266,7 +266,7 @@ CHEWING_API void chewing_cand_Enumerate(ChewingContext *ctx)
 
     LOG_API("");
 
-    ctx->cand_no = ctx->output->pci->pageNo * ctx->output->pci->nChoicePerPage;
+    ctx->candNo = ctx->output->pci->pageNo * ctx->output->pci->nChoicePerPage;
 }
 
 CHEWING_API int chewing_cand_hasNext(ChewingContext *ctx)
@@ -280,7 +280,7 @@ CHEWING_API int chewing_cand_hasNext(ChewingContext *ctx)
 
     LOG_API("");
 
-    return (ctx->cand_no < ctx->output->pci->nTotalChoice);
+    return (ctx->candNo < ctx->output->pci->nTotalChoice);
 }
 
 CHEWING_API const char *chewing_cand_String_static(ChewingContext *ctx)
@@ -296,8 +296,8 @@ CHEWING_API const char *chewing_cand_String_static(ChewingContext *ctx)
     LOG_API("");
 
     if (chewing_cand_hasNext(ctx)) {
-        s = ctx->output->pci->totalChoiceStr[ctx->cand_no];
-        ctx->cand_no++;
+        s = ctx->output->pci->totalChoiceStr[ctx->candNo];
+        ctx->candNo++;
     }
 
     return s;
@@ -319,7 +319,7 @@ CHEWING_API void chewing_interval_Enumerate(ChewingContext *ctx)
 
     LOG_API("");
 
-    ctx->it_no = 0;
+    ctx->itNo = 0;
 }
 
 CHEWING_API int chewing_interval_hasNext(ChewingContext *ctx)
@@ -333,7 +333,7 @@ CHEWING_API int chewing_interval_hasNext(ChewingContext *ctx)
 
     LOG_API("");
 
-    return (ctx->it_no < ctx->output->nDispInterval);
+    return (ctx->itNo < ctx->output->nDispInterval);
 }
 
 CHEWING_API void chewing_interval_Get(ChewingContext *ctx, IntervalType * it)
@@ -349,10 +349,10 @@ CHEWING_API void chewing_interval_Get(ChewingContext *ctx, IntervalType * it)
 
     if (chewing_interval_hasNext(ctx)) {
         if (it) {
-            it->from = ctx->output->dispInterval[ctx->it_no].from;
-            it->to = ctx->output->dispInterval[ctx->it_no].to;
+            it->from = ctx->output->dispInterval[ctx->itNo].from;
+            it->to = ctx->output->dispInterval[ctx->itNo].to;
         }
-        ctx->it_no++;
+        ctx->itNo++;
     }
 }
 
@@ -456,7 +456,7 @@ CHEWING_API void chewing_kbtype_Enumerate(ChewingContext *ctx)
 
     LOG_API("");
 
-    ctx->kb_no = 0;
+    ctx->kbNo = 0;
 }
 
 CHEWING_API int chewing_kbtype_hasNext(ChewingContext *ctx)
@@ -470,7 +470,7 @@ CHEWING_API int chewing_kbtype_hasNext(ChewingContext *ctx)
 
     LOG_API("");
 
-    return ctx->kb_no < KB_TYPE_NUM;
+    return ctx->kbNo < KB_TYPE_NUM;
 }
 
 extern const char *const kb_type_str[];
@@ -488,8 +488,8 @@ CHEWING_API const char *chewing_kbtype_String_static(ChewingContext *ctx)
     LOG_API("");
 
     if (chewing_kbtype_hasNext(ctx)) {
-        s = kb_type_str[ctx->kb_no];
-        ctx->kb_no++;
+        s = kb_type_str[ctx->kbNo];
+        ctx->kbNo++;
     }
 
     return s;

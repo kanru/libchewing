@@ -6,8 +6,8 @@ version = "0.5.1-alpha.1"
 edition = "2021"
 
 [dependencies]
-chewing = { version = "0.5.1-alpha.1", path = ".." }
-ffi-opaque = "2.0.0"
+chewing = { version = "0.5.1-alpha.1", path = "../.." }
+chewing-public = { version = "0.5.1-alpha.1", path = "../chewing-public" }
 
 [lib]
 crate-type = ["staticlib"]

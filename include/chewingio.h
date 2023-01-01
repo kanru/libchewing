@@ -23,6 +23,7 @@
  */
 
 #include "global.h"
+#include "chewing_public.h"
 
 #define KEYSTROKE_IGNORE 1
 #define KEYSTROKE_COMMIT 2

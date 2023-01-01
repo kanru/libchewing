@@ -902,7 +902,7 @@ int MakeOutput(ChewingOutput *pgo, ChewingData *pgdata)
     pgo->chiSymbolCursor = pgdata->chiSymbolCursor;
 
     /* fill bopomofoBuf */
-    if (BopomofoKbType(&pgdata->bopomofoData) >= KB_HANYU_PINYIN) {
+    if (BopomofoKbType(&pgdata->bopomofoData) >= KBTYPE_HANYU_PINYIN) {
         char key_seq[10];
         BopomofoKeyseq(&pgdata->bopomofoData, key_seq);
         strcpy(pgo->bopomofoBuf, key_seq);

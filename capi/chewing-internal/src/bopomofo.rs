@@ -1,10 +1,22 @@
-use std::{ffi::CString, os::raw::c_char, slice};
+use std::{
+    ffi::{c_int, CString},
+    os::raw::c_char,
+    slice,
+};
 
 use chewing::editor::{
-    keymap::{IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, QWERTY, RemappingKeymap, DVORAK, CARPALX},
-    layout::{DaiChien26, Et26, Hsu, Ibm, KeyBehavior, KeyboardLayoutCompat, Pinyin, Standard, Et, GinYieh},
+    keymap::{
+        IdentityKeymap, KeyCode, KeyCodeFromQwerty, Keymap, RemappingKeymap, CARPALX, DVORAK,
+        QWERTY,
+    },
+    layout::{
+        DaiChien26, Et, Et26, GinYieh, Hsu, Ibm, KeyBehavior, KeyboardLayoutCompat, Pinyin,
+        Standard,
+    },
     SyllableEditor,
 };
+
+use crate::{binding::HaninSymbolInput, types::{ChewingData, BopomofoData}};
 
 pub struct SyllableEditorWithKeymap {
     kb_type: KeyboardLayoutCompat,
@@ -93,11 +105,17 @@ pub extern "C" fn FreePhoneticEditor(editor_keymap_ptr: *mut SyllableEditorWithK
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorInput(
-    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
-    key: i32,
-) -> KeyBehavior {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
+pub extern "C" fn BopomofoPhoInput(data_ptr: *mut ChewingData, key: i32) -> KeyBehavior {
+    let pgdata = unsafe { data_ptr.as_mut().unwrap() };
+
+    if key == b'`' as i32 {
+        pgdata.b_select = 1;
+        pgdata.choice_info.old_chi_symbol_cursor = pgdata.chi_symbol_cursor;
+        unsafe { HaninSymbolInput(data_ptr) };
+        return KeyBehavior::OpenSymbolTable;
+    }
+
+    let editor_keymap = unsafe { pgdata.bopomofo_data.editor_with_keymap.as_mut().unwrap() };
     let key_code = match (key as u8).as_key_code() {
         Some(key_code) => key_code,
         None => return KeyBehavior::KeyError,
@@ -122,11 +140,9 @@ pub extern "C" fn PhoneticEditorInput(
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorSyllable(
-    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
-    pho_inx: *mut i32,
-) {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
+pub extern "C" fn BopomofoPhoInx(data_ptr: *mut BopomofoData, pho_inx: *mut i32) {
+    let bopomofo_data = unsafe { data_ptr.as_mut().unwrap() };
+    let editor_keymap = unsafe { bopomofo_data.editor_with_keymap.as_mut().unwrap() };
     let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
     let syllable = editor_keymap.editor.read();
 
@@ -149,11 +165,9 @@ pub extern "C" fn PhoneticEditorSyllable(
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorSyllableAlt(
-    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
-    pho_inx: *mut i32,
-) {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
+pub extern "C" fn BopomofoPhoInxAlt(data_ptr: *mut BopomofoData, pho_inx: *mut i32) {
+    let bopomofo_data = unsafe { data_ptr.as_mut().unwrap() };
+    let editor_keymap = unsafe { bopomofo_data.editor_with_keymap.as_mut().unwrap() };
     let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
     // FIXME
     let syllable = editor_keymap.editor.read();
@@ -177,11 +191,9 @@ pub extern "C" fn PhoneticEditorSyllableAlt(
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorKeyseq(
-    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
-    key_seq: *mut c_char,
-) {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
+pub extern "C" fn BopomofoKeyseq(data_ptr: *mut BopomofoData, key_seq: *mut c_char) {
+    let bopomofo_data = unsafe { data_ptr.as_mut().unwrap() };
+    let editor_keymap = unsafe { bopomofo_data.editor_with_keymap.as_mut().unwrap() };
     let key_seq = unsafe { slice::from_raw_parts_mut(key_seq as *mut u8, 10) };
     if let Some(key_seq_str) = editor_keymap.editor.key_seq() {
         let key_seq_cstr = CString::new(key_seq_str).unwrap();
@@ -191,46 +203,52 @@ pub extern "C" fn PhoneticEditorKeyseq(
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorSyllableIndex(
-    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
-) -> u16 {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
+pub extern "C" fn BopomofoSyllableIndex(data_ptr: *mut BopomofoData) -> u16 {
+    let bopomofo_data = unsafe { data_ptr.as_mut().unwrap() };
+    let editor_keymap = unsafe { bopomofo_data.editor_with_keymap.as_mut().unwrap() };
     let syllable = editor_keymap.editor.read();
     syllable.to_u16()
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorSyllableIndexAlt(
-    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
-) -> u16 {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
+pub extern "C" fn BopomofoSyllableIndexAlt(data_ptr: *mut BopomofoData) -> u16 {
+    let bopomofo_data = unsafe { data_ptr.as_mut().unwrap() };
+    let editor_keymap = unsafe { bopomofo_data.editor_with_keymap.as_mut().unwrap() };
     // FIXME
     let syllable = editor_keymap.editor.read();
     syllable.to_u16()
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorRemoveLast(editor_keymap_ptr: *mut SyllableEditorWithKeymap) {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
+pub extern "C" fn BopomofoRemoveLast(data_ptr: *mut BopomofoData) -> c_int {
+    let bopomofo_data = unsafe { data_ptr.as_mut().unwrap() };
+    let editor_keymap = unsafe { bopomofo_data.editor_with_keymap.as_mut().unwrap() };
     editor_keymap.editor.remove_last();
+    0
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorRemoveAll(editor_keymap_ptr: *mut SyllableEditorWithKeymap) {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
+pub extern "C" fn BopomofoRemoveAll(data_ptr: *mut BopomofoData) -> c_int {
+    let bopomofo_data = unsafe { data_ptr.as_mut().unwrap() };
+    let editor_keymap = unsafe { bopomofo_data.editor_with_keymap.as_mut().unwrap() };
     editor_keymap.editor.clear();
+    0
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorKbType(editor_keymap_ptr: *mut SyllableEditorWithKeymap) -> i32 {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
-    editor_keymap.kb_type as i32
+pub extern "C" fn BopomofoKbType(data_ptr: *mut BopomofoData) -> c_int {
+    let bopomofo_data = unsafe { data_ptr.as_mut().unwrap() };
+    let editor_keymap = unsafe { bopomofo_data.editor_with_keymap.as_mut().unwrap() };
+    editor_keymap.kb_type as c_int
 }
 
 #[no_mangle]
-pub extern "C" fn PhoneticEditorIsEntering(
-    editor_keymap_ptr: *mut SyllableEditorWithKeymap,
-) -> bool {
-    let editor_keymap = unsafe { editor_keymap_ptr.as_mut().unwrap() };
-    !editor_keymap.editor.is_empty()
+pub extern "C" fn BopomofoIsEntering(data_ptr: *mut BopomofoData) -> c_int {
+    let bopomofo_data = unsafe { data_ptr.as_mut().unwrap() };
+    let editor_keymap = unsafe { bopomofo_data.editor_with_keymap.as_mut().unwrap() };
+    if editor_keymap.editor.is_empty() {
+        0
+    } else {
+        1
+    }
 }

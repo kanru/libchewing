@@ -21,6 +21,26 @@ pub const HSU_SELKEY_TYPE1: usize = 1;
 /// Use "asdfzxcv89" as selection key
 pub const HSU_SELKEY_TYPE2: usize = 2;
 
+/// cbindgen:prefix-with-name
+/// cbindgen:enum-trailing-values=[Count]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(C)]
+pub enum KB {
+    Default,
+    Hsu,
+    Ibm,
+    GinYieh,
+    Et,
+    Et26,
+    Dvorak,
+    DvorakHsu,
+    DachenCp26,
+    HanyuPinyin,
+    ThlPinyin,
+    Mps2Pinyin, /* Mandarin Phonetic Symbols II */
+    Carpalx,
+}
+
 /// Deprecated, use chewing_set_ series of functions to set parameters instead.
 /// cbindgen:rename-all=CamelCase
 #[repr(C)]

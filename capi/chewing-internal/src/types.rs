@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_int, c_uint, c_void, c_long};
+use std::ffi::{c_char, c_int, c_long, c_uint, c_void};
 
 use chewing_public::types::{ChewingConfigData, IntervalType, MAX_SELKEY};
 
@@ -51,6 +51,18 @@ pub enum KBTYPE {
     Carpalx,
 }
 
+/// cbindgen:prefix-with-name
+#[repr(C)]
+pub enum BOPOMOFO {
+    Ignore,
+    Absorb,
+    Commit,
+    KeyError,
+    Error,
+    NoWord,
+    OpenSymbolTable,
+}
+
 #[repr(C)]
 pub struct PhrasingOutput {
     pub disp_interval: [IntervalType; MAX_INTERVAL],
@@ -60,7 +72,7 @@ pub struct PhrasingOutput {
 
 #[repr(C)]
 pub struct BopomofoData {
-    pub editor_with_keymap: *const SyllableEditorWithKeymap,
+    pub editor_with_keymap: *mut SyllableEditorWithKeymap,
 }
 
 #[repr(C)]
@@ -135,7 +147,7 @@ pub enum Category {
 #[repr(C)]
 pub struct PreeditBuf {
     pub category: Category,
-    pub char_: [c_char; MAX_UTF8_BUF],
+    pub char_: [u8; MAX_UTF8_BUF],
 }
 
 #[repr(C)]

@@ -67,6 +67,16 @@
 
 #define SYMBOL_CHOICE_UPDATE 3
 
+typedef enum BOPOMOFO {
+  BOPOMOFO_IGNORE,
+  BOPOMOFO_ABSORB,
+  BOPOMOFO_COMMIT,
+  BOPOMOFO_KEY_ERROR,
+  BOPOMOFO_ERROR,
+  BOPOMOFO_NO_WORD,
+  BOPOMOFO_OPEN_SYMBOL_TABLE,
+} BOPOMOFO;
+
 typedef enum Category {
   CHEWING_NONE,
   CHEWING_CHINESE,
@@ -177,12 +187,12 @@ typedef struct PhrasingOutput {
 } PhrasingOutput;
 
 typedef struct BopomofoData {
-  const struct SyllableEditorWithKeymap *editorWithKeymap;
+  struct SyllableEditorWithKeymap *editorWithKeymap;
 } BopomofoData;
 
 typedef struct PreeditBuf {
   enum Category category;
-  char char_[MAX_UTF8_BUF];
+  uint8_t char_[MAX_UTF8_BUF];
 } PreeditBuf;
 
 typedef struct UserPhraseData {
@@ -302,33 +312,33 @@ typedef struct ChewingContext {
   int kbNo;
 } ChewingContext;
 
-extern void FillPreeditBuf(struct ChewingData *pgdata, char *phrase, int from, int to);
+extern int toPreeditBufIndex(struct ChewingData *pgdata, int pos);
+
+extern int HaninSymbolInput(struct ChewingData *pgdata);
 
 struct SyllableEditorWithKeymap *NewPhoneticEditor(enum KeyboardLayoutCompat kb_type);
 
 void FreePhoneticEditor(struct SyllableEditorWithKeymap *editor_keymap_ptr);
 
-enum KeyBehavior PhoneticEditorInput(struct SyllableEditorWithKeymap *editor_keymap_ptr,
-                                     int32_t key);
+enum KeyBehavior BopomofoPhoInput(struct ChewingData *data_ptr, int32_t key);
 
-void PhoneticEditorSyllable(struct SyllableEditorWithKeymap *editor_keymap_ptr, int32_t *pho_inx);
+void BopomofoPhoInx(struct BopomofoData *data_ptr, int32_t *pho_inx);
 
-void PhoneticEditorSyllableAlt(struct SyllableEditorWithKeymap *editor_keymap_ptr,
-                               int32_t *pho_inx);
+void BopomofoPhoInxAlt(struct BopomofoData *data_ptr, int32_t *pho_inx);
 
-void PhoneticEditorKeyseq(struct SyllableEditorWithKeymap *editor_keymap_ptr, char *key_seq);
+void BopomofoKeyseq(struct BopomofoData *data_ptr, char *key_seq);
 
-uint16_t PhoneticEditorSyllableIndex(struct SyllableEditorWithKeymap *editor_keymap_ptr);
+uint16_t BopomofoSyllableIndex(struct BopomofoData *data_ptr);
 
-uint16_t PhoneticEditorSyllableIndexAlt(struct SyllableEditorWithKeymap *editor_keymap_ptr);
+uint16_t BopomofoSyllableIndexAlt(struct BopomofoData *data_ptr);
 
-void PhoneticEditorRemoveLast(struct SyllableEditorWithKeymap *editor_keymap_ptr);
+int BopomofoRemoveLast(struct BopomofoData *data_ptr);
 
-void PhoneticEditorRemoveAll(struct SyllableEditorWithKeymap *editor_keymap_ptr);
+int BopomofoRemoveAll(struct BopomofoData *data_ptr);
 
-int32_t PhoneticEditorKbType(struct SyllableEditorWithKeymap *editor_keymap_ptr);
+int BopomofoKbType(struct BopomofoData *data_ptr);
 
-bool PhoneticEditorIsEntering(struct SyllableEditorWithKeymap *editor_keymap_ptr);
+int BopomofoIsEntering(struct BopomofoData *data_ptr);
 
 struct ChewingConversionEngine *InitConversionEngine(const struct RefCell_LayeredDictionary *dict_ptr);
 
@@ -345,6 +355,8 @@ void ConversionEngineDoPhrasing(void *pgdata,
                                 uintptr_t breaks_len,
                                 IntervalType *display_intervals_ptr,
                                 int *display_intervals_len);
+
+int IsIntersect(IntervalType in1, IntervalType in2);
 
 const void *InitDict(char *prefix);
 

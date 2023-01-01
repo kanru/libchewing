@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 3.1.0)
 project(libchewing)
 
 # Update configure.ac if LIBCHEWING_VERSION is changed.
@@ -284,7 +284,6 @@ set(ALL_TESTCASES
     test-keyboard
     test-keyboardless
     test-logger
-    test-mmap
     test-path
     test-regression
     test-reset
@@ -294,6 +293,9 @@ set(ALL_TESTCASES
     test-userphrase
     test-utf8
 )
+if(NOT WITH_RUST)
+list(APPEND ALL_TESTCASES test-mmap)
+endif()
 set(ALL_TESTTOOLS
     performance
     randkeystroke
@@ -366,20 +368,23 @@ add_library(chewing OBJECT
     ${INC_DIR}/internal/chewing-private.h
     ${INC_DIR}/internal/chewingutil.h
     ${INC_DIR}/internal/choice-private.h
-    ${INC_DIR}/internal/dict-private.h
     ${INC_DIR}/internal/global-private.h
-    ${INC_DIR}/internal/pinyin-private.h
-    ${INC_DIR}/internal/tree-private.h
-    ${INC_DIR}/internal/userphrase-private.h
-    ${INC_DIR}/internal/bopomofo-private.h
 
     ${SRC_DIR}/compat.c
     ${SRC_DIR}/chewingio.c
     ${SRC_DIR}/chewingutil.c
     ${SRC_DIR}/choice.c
-    ${SRC_DIR}/c/dict.c
     ${SRC_DIR}/mod_aux.c
-    ${SRC_DIR}/c/pinyin.c
+    ${SRC_DIR}/private.h
+    ${SRC_DIR}/c/porting_layer/src/plat_path.c
+)
+if (NOT WITH_RUST)
+target_sources(chewing PRIVATE
+    ${INC_DIR}/internal/dict-private.h
+    ${INC_DIR}/internal/pinyin-private.h
+    ${INC_DIR}/internal/tree-private.h
+    ${INC_DIR}/internal/userphrase-private.h
+    ${INC_DIR}/internal/bopomofo-private.h
     ${SRC_DIR}/c/porting_layer/include/plat_mmap.h
     ${SRC_DIR}/c/porting_layer/include/plat_path.h
     ${SRC_DIR}/c/porting_layer/include/plat_types.h
@@ -387,13 +392,14 @@ add_library(chewing OBJECT
     ${SRC_DIR}/c/porting_layer/include/sys/plat_windows.h
     ${SRC_DIR}/c/porting_layer/src/plat_mmap_posix.c
     ${SRC_DIR}/c/porting_layer/src/plat_mmap_windows.c
-    ${SRC_DIR}/c/porting_layer/src/plat_path.c
     ${SRC_DIR}/c/porting_layer/src/rpl_malloc.c
-    ${SRC_DIR}/private.h
-    ${SRC_DIR}/tree.c
+    ${SRC_DIR}/c/pinyin.c
+    ${SRC_DIR}/c/dict.c
     ${SRC_DIR}/c/userphrase.c
     ${SRC_DIR}/c/bopomofo.c
+    ${SRC_DIR}/c/tree.c
 )
+endif()
 set_target_properties(chewing PROPERTIES
     COMPILE_DEFINITIONS "CHEWING_DATADIR=\"${CMAKE_INSTALL_FULL_DATADIR}/libchewing\""
 )

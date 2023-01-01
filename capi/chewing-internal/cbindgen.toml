@@ -32,5 +32,6 @@ rename_variants = "ScreamingSnakeCase"
 [export]
 include = [
     "KBTYPE",
+    "BOPOMOFO",
     "ChewingContext"
 ]

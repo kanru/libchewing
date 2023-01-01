@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    ffi::{c_char, c_int, c_void, CStr, CString},
+    ffi::{c_char, c_int, c_void, CStr},
     rc::Rc,
     slice,
 };
@@ -10,6 +10,8 @@ use chewing::{
     dictionary::LayeredDictionary,
 };
 use chewing_public::types::IntervalType;
+
+use crate::{binding::toPreeditBufIndex, types::ChewingData};
 
 #[no_mangle]
 pub extern "C" fn InitConversionEngine(
@@ -95,11 +97,22 @@ pub extern "C" fn ConversionEngineDoPhrasing(
     for (i, interval) in intervals.into_iter().enumerate() {
         let from = interval.start as c_int;
         let to = interval.end as c_int;
-        let phrase = CString::new(interval.phrase).expect("phrase has no internal null");
-        unsafe {
-            crate::binding::FillPreeditBuf(pgdata.cast(), phrase.as_ptr() as *mut i8, from, to);
-        }
+        // let phrase = CString::new(interval.phrase).expect("phrase has no internal null");
+        fill_preedit_buf(pgdata.cast(), &interval.phrase, from, to);
         display_intervals[i].from = from;
         display_intervals[i].to = to;
     }
+}
+
+fn fill_preedit_buf(data_ptr: *mut ChewingData, phrase: &String, from: c_int, to: c_int) {
+    let pgdata = unsafe { data_ptr.as_mut().unwrap() };
+    let start = unsafe { toPreeditBufIndex(data_ptr, from) } as usize;
+    for i in start..(to - from) as usize {
+        phrase.chars().nth(i).unwrap().encode_utf8(&mut pgdata.preedit_buf[i].char_);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn IsIntersect(in1: IntervalType, in2: IntervalType) -> c_int {
+    if in1.from.max(in2.from) < in1.to.min(in2.to) { 1 } else { 0 }
 }

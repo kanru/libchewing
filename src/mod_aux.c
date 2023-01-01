@@ -442,7 +442,7 @@ CHEWING_API int chewing_keystroke_CheckAbsorb(const ChewingContext *ctx)
 
 CHEWING_API int chewing_kbtype_Total(const ChewingContext *ctx UNUSED)
 {
-    return KB_TYPE_NUM;
+    return KBTYPE_COUNT;
 }
 
 CHEWING_API void chewing_kbtype_Enumerate(ChewingContext *ctx)
@@ -470,7 +470,7 @@ CHEWING_API int chewing_kbtype_hasNext(ChewingContext *ctx)
 
     LOG_API("");
 
-    return ctx->kbNo < KB_TYPE_NUM;
+    return ctx->kbNo < KBTYPE_COUNT;
 }
 
 extern const char *const kb_type_str[];

@@ -59,6 +59,23 @@ typedef struct ChewingContext ChewingContext;
  */
 #define HSU_SELKEY_TYPE2 2
 
+typedef enum KB {
+  KB_DEFAULT,
+  KB_HSU,
+  KB_IBM,
+  KB_GIN_YIEH,
+  KB_ET,
+  KB_ET26,
+  KB_DVORAK,
+  KB_DVORAK_HSU,
+  KB_DACHEN_CP26,
+  KB_HANYU_PINYIN,
+  KB_THL_PINYIN,
+  KB_MPS2_PINYIN,
+  KB_CARPALX,
+  KB_COUNT,
+} KB;
+
 /**
  * Deprecated, use chewing_set_ series of functions to set parameters instead.
  */

@@ -15,6 +15,8 @@
 
 #include "chewing-private.h"
 
+#ifndef HAVE_RUST
+
 /** Chewing Phonetic Definitions */
 enum {
     BOPOMOFO_IGNORE,
@@ -54,6 +56,8 @@ int BopomofoPhoInxAlt(BopomofoData *, int pho_inx[4]);
 int BopomofoKeyseq(BopomofoData *, char key_seq[10]);
 uint16_t BopomofoSyllableIndex(BopomofoData *);
 uint16_t BopomofoSyllableIndexAlt(BopomofoData *);
+
+#endif
 
 /* *INDENT-OFF* */
 #endif

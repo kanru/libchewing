@@ -29,5 +29,11 @@ typedef struct ChewingContext ChewingContext;
 parse_deps = true
 include = ["chewing"]
 
+[struct]
+rename_fields = "CamelCase"
+
+[enum]
+rename_variants = "ScreamingSnakeCase"
+
 [export]
-include = ["ChewingConfigData", "IntervalType", "ChewingContext"]
+include = ["KB", "ChewingConfigData", "IntervalType", "ChewingContext"]

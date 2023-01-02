@@ -30,7 +30,7 @@
 #include "bopomofo-private.h"
 #include "private.h"
 
-static void ChangeSelectIntervalAndBreakpoint(ChewingData *pgdata, int from, int to, const char *str)
+void ChangeSelectIntervalAndBreakpoint(ChewingData *pgdata, int from, int to, const char *str)
 {
     int i;
     int user_alloc;

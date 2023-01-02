@@ -137,6 +137,7 @@ pub struct ChewingStaticData {
     pub userphrase_iter: *mut c_void,
 }
 
+#[derive(Debug)]
 #[repr(C)]
 pub enum Category {
     ChewingNone,
@@ -144,6 +145,7 @@ pub enum Category {
     ChewingSymbol,
 }
 
+#[derive(Debug)]
 #[repr(C)]
 pub struct PreeditBuf {
     pub category: Category,

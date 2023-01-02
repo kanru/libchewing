@@ -12,6 +12,7 @@ dirs-next = "2.0.0"
 riff = "1.0.0"
 rusqlite = "0.28.0"
 thiserror = "1.0.0"
+tracing = "0.1.37"
 
 [dev-dependencies]
 tempfile = "3"

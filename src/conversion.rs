@@ -7,6 +7,15 @@ pub struct Interval {
     pub phrase: String,
 }
 
+impl Interval {
+    pub fn contains(&self, other: &Interval) -> bool {
+        self.start <= other.start && self.end >= other.end
+    }
+    pub fn len(&self) -> usize {
+        self.end - self.start
+    }
+}
+
 #[derive(Debug)]
 pub struct Break(pub usize);
 
@@ -22,8 +31,8 @@ pub trait ConversionEngine {
     fn convert_next(&self, segment: &ChineseSequence, next: usize) -> Vec<Interval>;
 }
 
+mod experimental_conversion;
 mod chewing_conversion;
-mod tree_conversion;
 
+pub use experimental_conversion::ExperimentalConversionEngine;
 pub use chewing_conversion::ChewingConversionEngine;
-pub use tree_conversion::TreeConversionEngine;

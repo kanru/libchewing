@@ -348,7 +348,7 @@ void ConversionEngineDoPhrasing(void *pgdata,
                                 struct ChewingConversionEngine *ce_ptr,
                                 uint16_t *syllables_u16_ptr,
                                 uintptr_t syllables_len,
-                                char (*select_strs_ptr)[201],
+                                char (*select_strs_ptr)[MAX_PHRASE_UTF8_BUF],
                                 IntervalType *select_intervals_ptr,
                                 uintptr_t select_len,
                                 int *breaks_u16_ptr,
@@ -356,7 +356,7 @@ void ConversionEngineDoPhrasing(void *pgdata,
                                 IntervalType *display_intervals_ptr,
                                 int *display_intervals_len);
 
-int IsIntersect(IntervalType in1, IntervalType in2);
+bool IsIntersect(IntervalType in1, IntervalType in2);
 
 const void *InitDict(char *prefix);
 

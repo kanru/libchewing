@@ -11,7 +11,7 @@ use chewing::{
 };
 use chewing_public::types::IntervalType;
 
-use crate::{binding::toPreeditBufIndex, types::ChewingData};
+use crate::{binding::toPreeditBufIndex, types::{ChewingData, MAX_PHRASE_UTF8_BUF}};
 
 #[no_mangle]
 pub extern "C" fn InitConversionEngine(
@@ -37,7 +37,7 @@ pub extern "C" fn ConversionEngineDoPhrasing(
     ce_ptr: *mut ChewingConversionEngine,
     syllables_u16_ptr: *mut u16,
     syllables_len: usize,
-    select_strs_ptr: *mut [c_char; 201],
+    select_strs_ptr: *mut [c_char; MAX_PHRASE_UTF8_BUF],
     select_intervals_ptr: *mut IntervalType,
     select_len: usize,
     breaks_u16_ptr: *mut c_int,
@@ -54,9 +54,9 @@ pub extern "C" fn ConversionEngineDoPhrasing(
         .collect();
 
     let select_strs: Vec<_> = unsafe { slice::from_raw_parts(select_strs_ptr, select_len) }
-        .iter()
-        .map(|it| unsafe { CStr::from_ptr(it.as_ptr()) })
-        .collect();
+            .iter()
+            .map(|it| unsafe { CStr::from_ptr(it.as_ptr()) })
+            .collect();
     let select_intervals: Vec<_> =
         unsafe { slice::from_raw_parts(select_intervals_ptr, select_len) }
             .iter()
@@ -82,10 +82,10 @@ pub extern "C" fn ConversionEngineDoPhrasing(
         });
 
     let sequence = ChineseSequence {
-        syllables,
-        selections,
-        breaks,
-    };
+            syllables,
+            selections,
+            breaks,
+        };
     let intervals = ce.convert(&sequence);
 
     let display_intervals =
@@ -97,7 +97,6 @@ pub extern "C" fn ConversionEngineDoPhrasing(
     for (i, interval) in intervals.into_iter().enumerate() {
         let from = interval.start as c_int;
         let to = interval.end as c_int;
-        // let phrase = CString::new(interval.phrase).expect("phrase has no internal null");
         fill_preedit_buf(pgdata.cast(), &interval.phrase, from, to);
         display_intervals[i].from = from;
         display_intervals[i].to = to;
@@ -107,12 +106,16 @@ pub extern "C" fn ConversionEngineDoPhrasing(
 fn fill_preedit_buf(data_ptr: *mut ChewingData, phrase: &String, from: c_int, to: c_int) {
     let pgdata = unsafe { data_ptr.as_mut().unwrap() };
     let start = unsafe { toPreeditBufIndex(data_ptr, from) } as usize;
-    for i in start..(to - from) as usize {
-        phrase.chars().nth(i).unwrap().encode_utf8(&mut pgdata.preedit_buf[i].char_);
+    for i in 0..(to - from) as usize {
+        phrase
+            .chars()
+            .nth(i)
+            .unwrap()
+            .encode_utf8(&mut pgdata.preedit_buf[start + i].char_);
     }
 }
 
 #[no_mangle]
-pub extern "C" fn IsIntersect(in1: IntervalType, in2: IntervalType) -> c_int {
-    if in1.from.max(in2.from) < in1.to.min(in2.to) { 1 } else { 0 }
+pub extern "C" fn IsIntersect(in1: IntervalType, in2: IntervalType) -> bool {
+    in1.from.max(in2.from) < in1.to.min(in2.to)
 }

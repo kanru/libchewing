@@ -48,15 +48,6 @@
 
 #ifndef HAVE_RUST
 struct ChewingData;
-typedef struct UserPhraseData {
-    uint16_t phoneSeq[MAX_PHONE_SEQ_LEN];
-    char wordSeq[MAX_PHRASE_LEN * MAX_UTF8_SIZE + 1];
-    int userfreq;
-    int recentTime;
-    int origfreq;               /* the initial frequency of this phrase */
-    int maxfreq;                /* the maximum frequency of the phrase of the same pid */
-} UserPhraseData;
-
 /* Forward declaration */
 
 typedef struct UserPhraseData {

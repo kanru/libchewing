@@ -317,7 +317,7 @@ CHEWING_API ChewingContext *chewing_new()
 CHEWING_API int chewing_Reset(ChewingContext *ctx)
 {
     ChewingData *pgdata;
-    ChewingStaticData static_data;
+    ChewingStaticData staticData;
     ChewingConfigData old_config;
     void (*logger) (void *data, int level, const char *fmt, ...);
     void *loggerData;
@@ -336,7 +336,7 @@ CHEWING_API int chewing_Reset(ChewingContext *ctx)
 
     /* Backup old config and restore it after clearing pgdata structure. */
     old_config = pgdata->config;
-    static_data = pgdata->staticData;
+    staticData = pgdata->staticData;
     logger = pgdata->logger;
     loggerData = pgdata->loggerData;
 #ifdef HAVE_RUST
@@ -349,7 +349,7 @@ CHEWING_API int chewing_Reset(ChewingContext *ctx)
 #endif
     memset(pgdata, 0, sizeof(ChewingData));
     pgdata->config = old_config;
-    pgdata->staticData = static_data;
+    pgdata->staticData = staticData;
     pgdata->logger = logger;
     pgdata->loggerData = loggerData;
 
@@ -1168,7 +1168,7 @@ CHEWING_API int chewing_handle_ShiftLeft(ChewingContext *ctx)
         keystrokeRtn = KEYSTROKE_IGNORE;
     }
     if (!pgdata->bSelect) {
-        /*  PointEnd locates (-9, +9) */
+        /*  pointEnd locates (-9, +9) */
         if (!BopomofoIsEntering(&(pgdata->bopomofoData)) && pgdata->chiSymbolCursor > 0 && pgdata->pointEnd > -9) {
             if (pgdata->pointStart == -1)
                 pgdata->pointStart = pgdata->chiSymbolCursor;
@@ -1239,7 +1239,7 @@ CHEWING_API int chewing_handle_ShiftRight(ChewingContext *ctx)
     }
 
     if (!pgdata->bSelect) {
-        /* PointEnd locates (-9, +9) */
+        /* pointEnd locates (-9, +9) */
         if (!BopomofoIsEntering(&(pgdata->bopomofoData)) &&
             pgdata->chiSymbolCursor < pgdata->chiSymbolBufLen && pgdata->pointEnd < 9) {
             if (pgdata->pointStart == -1)

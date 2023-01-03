@@ -77,7 +77,7 @@ impl SyllableEditor for Et {
                 return KeyBehavior::Commit;
             }
         } else {
-            self.syllable.tone.take();
+            self.syllable.remove_tone();
         }
 
         // In C libchewing TONE1 / Space is not a phonetic symbol

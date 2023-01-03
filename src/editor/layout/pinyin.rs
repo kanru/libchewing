@@ -2,7 +2,7 @@
 
 use crate::{
     editor::keymap::{KeyCode, KeyEvent},
-    zhuyin::{Bopomofo, Syllable},
+    zhuyin::{Bopomofo, Syllable, SyllableBuilder},
 };
 
 use super::{KeyBehavior, SyllableEditor};
@@ -127,9 +127,11 @@ impl SyllableEditor for Pinyin {
         {
             self.key_seq.clear();
             self.syllable = entry.primary;
-            self.syllable.tone = tone;
             self.syllable_alt = entry.alt;
-            self.syllable_alt.tone = tone;
+            if tone.is_some() {
+                self.syllable.update(tone.unwrap());
+                self.syllable_alt.update(tone.unwrap());
+            }
             return KeyBehavior::Commit;
         }
 
@@ -139,9 +141,11 @@ impl SyllableEditor for Pinyin {
         {
             self.key_seq.clear();
             self.syllable = entry.primary;
-            self.syllable.tone = tone;
             self.syllable_alt = entry.alt;
-            self.syllable_alt.tone = tone;
+            if tone.is_some() {
+                self.syllable.update(tone.unwrap());
+                self.syllable_alt.update(tone.unwrap());
+            }
             return KeyBehavior::Commit;
         }
 
@@ -225,12 +229,20 @@ impl SyllableEditor for Pinyin {
         }
 
         self.key_seq.clear();
-        self.syllable = Syllable {
-            initial,
-            medial,
-            rime,
-            tone,
-        };
+        let mut builder = Syllable::builder();
+        if initial.is_some() {
+            builder = builder.insert(initial.unwrap());
+        }
+        if medial.is_some() {
+            builder = builder.insert(medial.unwrap());
+        }
+        if rime.is_some() {
+            builder = builder.insert(rime.unwrap());
+        }
+        if tone.is_some() {
+            builder = builder.insert(tone.unwrap());
+        }
+        self.syllable = builder.build();
         self.syllable_alt = self.syllable;
         KeyBehavior::Commit
     }

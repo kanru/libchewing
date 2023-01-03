@@ -9,44 +9,99 @@ use super::{Bopomofo, BopomofoKind};
 /// <https://en.m.wikipedia.org/wiki/Syllable#Chinese_model>
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Syllable {
-    pub initial: Option<Bopomofo>,
-    pub medial: Option<Bopomofo>,
-    pub rime: Option<Bopomofo>,
-    pub tone: Option<Bopomofo>,
+    value: u16,
 }
 
 impl Syllable {
     pub const fn new() -> Syllable {
         Syllable {
-            initial: None,
-            medial: None,
-            rime: None,
-            tone: None,
+            value: 0,
         }
     }
 
     pub const fn builder() -> SyllableBuilder {
         SyllableBuilder {
-            syllable: Syllable::new(),
+            value: 0,
         }
     }
+    pub const fn initial(&self) -> Option<Bopomofo> {
+        let index = self.value >> 9;
+        if index == 0 {
+            None
+        } else {
+            match Bopomofo::from_initial(index) {
+                Ok(v) => Some(v),
+                Err(_) => panic!(),
+            }
+        }
+    }
+    pub const fn medial(&self) -> Option<Bopomofo> {
+        let index = (self.value & 0b0000000_11_0000_000) >> 7;
+        if index == 0 {
+            None
+        } else {
+            match Bopomofo::from_medial(index) {
+                Ok(v) => Some(v),
+                Err(_) => panic!(),
+            }
+        }
+    }
+    pub const fn rime(&self) -> Option<Bopomofo> {
+        let index = (self.value & 0b0000000_00_1111_000) >> 3;
+        if index == 0 {
+            None
+        } else {
+            match Bopomofo::from_rime(index) {
+                Ok(v) => Some(v),
+                Err(_) => panic!(),
+            }
+        }
+    }
+    pub const fn tone(&self) -> Option<Bopomofo> {
+        let index = self.value & 0b0000000_00_0000_111;
+        if index == 0 {
+            None
+        } else {
+            match Bopomofo::from_tone(index) {
+                Ok(v) => Some(v),
+                Err(_) => panic!(),
+            }
+        }
+    }
+    pub fn remove_initial(&mut self) -> Option<Bopomofo> {
+        let ret = self.initial();
+        self.value = 0b0000000_11_1111_111 & self.value;
+        ret
+    }
+    pub fn remove_medial(&mut self) -> Option<Bopomofo> {
+        let ret = self.medial();
+        self.value = 0b1111111_00_1111_111 & self.value;
+        ret
+    }
+    pub fn remove_rime(&mut self) -> Option<Bopomofo> {
+        let ret = self.rime();
+        self.value = 0b1111111_11_0000_111 & self.value;
+        ret
+    }
+    pub fn remove_tone(&mut self) -> Option<Bopomofo> {
+        let ret = self.tone();
+        self.value = 0b1111111_11_1111_000 & self.value;
+        ret
+    }
     pub fn is_empty(&self) -> bool {
-        self.initial.is_none()
-            && self.medial.is_none()
-            && self.rime.is_none()
-            && self.tone.is_none()
+        self.value == 0
     }
     pub fn has_initial(&self) -> bool {
-        self.initial.is_some()
+        self.initial().is_some()
     }
     pub fn has_medial(&self) -> bool {
-        self.medial.is_some()
+        self.medial().is_some()
     }
     pub fn has_rime(&self) -> bool {
-        self.rime.is_some()
+        self.rime().is_some()
     }
     pub fn has_tone(&self) -> bool {
-        self.tone.is_some()
+        self.tone().is_some()
     }
     /// Returns the `Syllable` encoded in a u16 integer.
     ///
@@ -60,16 +115,11 @@ impl Syllable {
     /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     /// ```
     pub fn to_u16(&self) -> u16 {
-        assert!(
+        debug_assert!(
             !self.is_empty(),
             "empty syllable cannot be converted to u16"
         );
-        let initial = self.initial.map_or(0, |v| v as u16 + 1);
-        let medial = self.medial.map_or(0, |v| v as u16 - 20);
-        let rime = self.rime.map_or(0, |v| v as u16 - 23);
-        let tone = self.tone.map_or(0, |v| v as u16 - 36).clamp(0, 4);
-
-        (initial << 9) | (medial << 7) | (rime << 3) | tone
+        self.value
     }
     /// Returns the `Syllable` encoded in a u16 integer in little-endian bytes.
     ///
@@ -87,22 +137,36 @@ impl Syllable {
     }
     pub fn update(&mut self, bopomofo: Bopomofo) {
         match bopomofo.kind() {
-            BopomofoKind::Initial => self.initial.replace(bopomofo),
-            BopomofoKind::Medial => self.medial.replace(bopomofo),
-            BopomofoKind::Rime => self.rime.replace(bopomofo),
-            BopomofoKind::Tone => self.tone.replace(bopomofo),
+            BopomofoKind::Initial => {
+                self.remove_initial();
+                self.value |= (bopomofo as u16 + 1) << 9;
+            }
+            BopomofoKind::Medial => {
+                self.remove_medial();
+                self.value |= (bopomofo as u16 - 20) << 7;
+            }
+            BopomofoKind::Rime => {
+                self.remove_rime();
+                self.value |= (bopomofo as u16 - 23) << 3;
+            }
+            BopomofoKind::Tone => {
+                self.remove_tone();
+                self.value |= bopomofo as u16 - 36;
+            }
         };
     }
     pub fn pop(&mut self) -> Option<Bopomofo> {
-        for bopomofo in [
-            &mut self.tone,
-            &mut self.rime,
-            &mut self.medial,
-            &mut self.initial,
-        ] {
-            if bopomofo.is_some() {
-                return bopomofo.take();
-            }
+        if self.tone().is_some() {
+            return self.remove_tone();
+        }
+        if self.rime().is_some() {
+            return self.remove_rime();
+        }
+        if self.medial().is_some() {
+            return self.remove_medial();
+        }
+        if self.initial().is_some() {
+            return self.remove_initial();
         }
         None
     }
@@ -134,56 +198,9 @@ impl TryFrom<u16> for Syllable {
 
     #[allow(clippy::unusual_byte_groupings)]
     fn try_from(value: u16) -> Result<Self, Self::Error> {
-        let initial = value >> 9;
-        let medial = (value & 0b00000000_11_0000_000) >> 7;
-        let rime = (value & 0b00000000_00_1111_000) >> 3;
-        let tone = value & 0b00000000_00_0000_111;
-        let initial = if initial == 0 {
-            None
-        } else {
-            Some(
-                Bopomofo::from_initial(initial).map_err(|err| DecodeSyllableError {
-                    msg: "Unable to decode syllable".to_string(),
-                    source: Box::new(err),
-                })?,
-            )
-        };
-        let medial = if medial == 0 {
-            None
-        } else {
-            Some(
-                Bopomofo::from_medial(medial).map_err(|err| DecodeSyllableError {
-                    msg: "Unable to decode syllable".to_string(),
-                    source: Box::new(err),
-                })?,
-            )
-        };
-        let rime = if rime == 0 {
-            None
-        } else {
-            Some(
-                Bopomofo::from_rime(rime).map_err(|err| DecodeSyllableError {
-                    msg: "Unable to decode syllable".to_string(),
-                    source: Box::new(err),
-                })?,
-            )
-        };
-        let tone = if tone == 0 {
-            None
-        } else {
-            Some(
-                Bopomofo::from_tone(tone).map_err(|err| DecodeSyllableError {
-                    msg: "Unable to decode syllable".to_string(),
-                    source: Box::new(err),
-                })?,
-            )
-        };
-
+        // TODO check invalid value
         Ok(Syllable {
-            initial,
-            medial,
-            rime,
-            tone,
+            value,
         })
     }
 }
@@ -207,7 +224,7 @@ where
 
 impl Display for Syllable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for &bopomofo in [&self.initial, &self.medial, &self.rime, &self.tone] {
+        for &bopomofo in [&self.initial(), &self.medial(), &self.rime(), &self.tone()] {
             if let Some(bopomofo) = bopomofo {
                 f.write_char(bopomofo.into())?;
             }
@@ -217,41 +234,41 @@ impl Display for Syllable {
 }
 
 pub struct SyllableBuilder {
-    syllable: Syllable,
+    value: u16,
 }
 
 impl SyllableBuilder {
     pub const fn insert(mut self, bopomofo: Bopomofo) -> SyllableBuilder {
         match bopomofo.kind() {
             BopomofoKind::Initial => {
-                if self.syllable.initial.is_some() {
+                if self.value & 0b1111111_00_0000_000 != 0 {
                     panic!("multiple initial bopomofo");
                 }
-                self.syllable.initial = Some(bopomofo);
+                self.value |= (bopomofo as u16 + 1) << 9;
             }
             BopomofoKind::Medial => {
-                if self.syllable.medial.is_some() {
+                if self.value & 0b0000000_11_0000_000 != 0 {
                     panic!("multiple medial bopomofo");
                 }
-                self.syllable.medial = Some(bopomofo);
+                self.value |= (bopomofo as u16 - 20) << 7;
             }
             BopomofoKind::Rime => {
-                if self.syllable.rime.is_some() {
+                if self.value & 0b0000000_00_1111_000 != 0 {
                     panic!("multiple rime bopomofo");
                 }
-                self.syllable.rime = Some(bopomofo);
+                self.value |= (bopomofo as u16 - 23) << 3;
             }
             BopomofoKind::Tone => {
-                if self.syllable.tone.is_some() {
+                if self.value & 0b0000000_00_0000_111 != 0 {
                     panic!("multiple tone bopomofo");
                 }
-                self.syllable.tone = Some(bopomofo);
+                self.value |= bopomofo as u16 - 36;
             }
         };
         self
     }
     pub const fn build(self) -> Syllable {
-        self.syllable
+        Syllable { value: self.value }
     }
 }
 #[derive(Error, Debug)]

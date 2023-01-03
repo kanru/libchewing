@@ -47,22 +47,23 @@ fn default_or_alt(source: Option<Bopomofo>, default: Bopomofo, alt: Bopomofo) ->
 impl SyllableEditor for DaiChien26 {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         if self.is_end_key(key.index) {
-            let tone = match key.index {
+            match key.index {
                 // KeyIndex::K48 => Some(Bopomofo::TONE1),
-                KeyIndex::K17 => Some(Bopomofo::TONE2),
-                KeyIndex::K18 => Some(Bopomofo::TONE3),
-                KeyIndex::K29 => Some(Bopomofo::TONE4),
-                KeyIndex::K20 => Some(Bopomofo::TONE5),
-                _ => None,
+                KeyIndex::K17 => self.syllable.update(Bopomofo::TONE2),
+                KeyIndex::K18 => self.syllable.update(Bopomofo::TONE3),
+                KeyIndex::K29 => self.syllable.update(Bopomofo::TONE4),
+                KeyIndex::K20 => self.syllable.update(Bopomofo::TONE5),
+                _ => {
+                    self.syllable.remove_tone();
+                },
             };
-            self.syllable.tone = tone;
             return KeyBehavior::Commit;
         }
         let bopomofo = match key.index {
-            KeyIndex::K15 => default_or_alt(self.syllable.initial, Bopomofo::B, Bopomofo::P),
+            KeyIndex::K15 => default_or_alt(self.syllable.initial(), Bopomofo::B, Bopomofo::P),
             KeyIndex::K27 => Bopomofo::M,
             KeyIndex::K38 => Bopomofo::F,
-            KeyIndex::K16 => default_or_alt(self.syllable.initial, Bopomofo::D, Bopomofo::T),
+            KeyIndex::K16 => default_or_alt(self.syllable.initial(), Bopomofo::D, Bopomofo::T),
             KeyIndex::K28 => Bopomofo::N,
             KeyIndex::K39 => Bopomofo::L,
             KeyIndex::K17 => Bopomofo::G,
@@ -71,7 +72,7 @@ impl SyllableEditor for DaiChien26 {
             KeyIndex::K18 => Bopomofo::J,
             KeyIndex::K30 => Bopomofo::Q,
             KeyIndex::K41 => Bopomofo::X,
-            KeyIndex::K19 => default_or_alt(self.syllable.initial, Bopomofo::ZH, Bopomofo::CH),
+            KeyIndex::K19 => default_or_alt(self.syllable.initial(), Bopomofo::ZH, Bopomofo::CH),
             KeyIndex::K31 => Bopomofo::SH,
             KeyIndex::K42 => {
                 if self.has_initial_or_medial() {
@@ -90,10 +91,10 @@ impl SyllableEditor for DaiChien26 {
                 }
             }
             KeyIndex::K21 => {
-                match (self.syllable.medial, self.syllable.rime) {
+                match (self.syllable.medial(), self.syllable.rime()) {
                     (Some(Bopomofo::I), Some(Bopomofo::A)) => {
-                        self.syllable.medial.take();
-                        self.syllable.rime.take();
+                        self.syllable.remove_medial();
+                        self.syllable.remove_rime();
                         return KeyBehavior::Absorb;
                     }
                     (_, Some(Bopomofo::A)) => {
@@ -101,7 +102,7 @@ impl SyllableEditor for DaiChien26 {
                         return KeyBehavior::Absorb;
                     }
                     (Some(Bopomofo::I), _) => {
-                        self.syllable.medial.take();
+                        self.syllable.remove_medial();
                         self.syllable.update(Bopomofo::A);
                         return KeyBehavior::Absorb;
                     }
@@ -115,25 +116,25 @@ impl SyllableEditor for DaiChien26 {
             }
             KeyIndex::K33 => Bopomofo::U,
             KeyIndex::K44 => {
-                match (self.syllable.medial, self.syllable.rime) {
+                match (self.syllable.medial(), self.syllable.rime()) {
                     (Some(Bopomofo::IU), None) => {
-                        self.syllable.medial.take();
+                        self.syllable.remove_medial();
                         self.syllable.update(Bopomofo::OU);
                         return KeyBehavior::Absorb;
                     }
                     (Some(Bopomofo::IU), Some(f)) if f != Bopomofo::OU => {
-                        self.syllable.medial.take();
+                        self.syllable.remove_medial();
                         self.syllable.update(Bopomofo::OU);
                         return KeyBehavior::Absorb;
                     }
                     (None, Some(Bopomofo::OU)) => {
                         self.syllable.update(Bopomofo::IU);
-                        self.syllable.rime.take();
+                        self.syllable.remove_rime();
                         return KeyBehavior::Absorb;
                     }
                     (Some(f), Some(Bopomofo::OU)) if f != Bopomofo::IU => {
                         self.syllable.update(Bopomofo::IU);
-                        self.syllable.rime.take();
+                        self.syllable.remove_rime();
                         return KeyBehavior::Absorb;
                     }
                     (Some(_), _) => {
@@ -144,11 +145,11 @@ impl SyllableEditor for DaiChien26 {
                 }
                 Bopomofo::IU
             }
-            KeyIndex::K22 => default_or_alt(self.syllable.rime, Bopomofo::O, Bopomofo::AI),
+            KeyIndex::K22 => default_or_alt(self.syllable.rime(), Bopomofo::O, Bopomofo::AI),
             KeyIndex::K34 => Bopomofo::E,
-            KeyIndex::K23 => default_or_alt(self.syllable.rime, Bopomofo::EI, Bopomofo::AN),
-            KeyIndex::K35 => default_or_alt(self.syllable.rime, Bopomofo::AU, Bopomofo::ANG),
-            KeyIndex::K24 => default_or_alt(self.syllable.rime, Bopomofo::EN, Bopomofo::ER),
+            KeyIndex::K23 => default_or_alt(self.syllable.rime(), Bopomofo::EI, Bopomofo::AN),
+            KeyIndex::K35 => default_or_alt(self.syllable.rime(), Bopomofo::AU, Bopomofo::ANG),
+            KeyIndex::K24 => default_or_alt(self.syllable.rime(), Bopomofo::EN, Bopomofo::ER),
             _ => return KeyBehavior::KeyError,
         };
 

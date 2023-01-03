@@ -35,7 +35,7 @@ impl SyllableEditor for Et26 {
     fn key_press(&mut self, key: KeyEvent) -> KeyBehavior {
         if self.is_end_key(key.code) {
             if !self.syllable.has_medial() && !self.syllable.has_rime() {
-                match self.syllable.initial {
+                match self.syllable.initial() {
                     Some(Bopomofo::J) => {
                         self.syllable.update(Bopomofo::ZH);
                     }
@@ -43,41 +43,42 @@ impl SyllableEditor for Et26 {
                         self.syllable.update(Bopomofo::SH);
                     }
                     Some(Bopomofo::P) => {
-                        self.syllable.initial.take();
+                        self.syllable.remove_initial();
                         self.syllable.update(Bopomofo::OU);
                     }
                     Some(Bopomofo::M) => {
-                        self.syllable.initial.take();
+                        self.syllable.remove_initial();
                         self.syllable.update(Bopomofo::AN);
                     }
                     Some(Bopomofo::N) => {
-                        self.syllable.initial.take();
+                        self.syllable.remove_initial();
                         self.syllable.update(Bopomofo::EN);
                     }
                     Some(Bopomofo::T) => {
-                        self.syllable.initial.take();
+                        self.syllable.remove_initial();
                         self.syllable.update(Bopomofo::ANG);
                     }
                     Some(Bopomofo::L) => {
-                        self.syllable.initial.take();
+                        self.syllable.remove_initial();
                         self.syllable.update(Bopomofo::ENG);
                     }
                     Some(Bopomofo::H) => {
-                        self.syllable.initial.take();
+                        self.syllable.remove_initial();
                         self.syllable.update(Bopomofo::ER);
                     }
                     _ => (),
                 }
             }
-            let tone = match key.code {
+            match key.code {
                 // KeyCode::Space => Some(Bopomofo::TONE1),
-                KeyCode::F => Some(Bopomofo::TONE2),
-                KeyCode::J => Some(Bopomofo::TONE3),
-                KeyCode::K => Some(Bopomofo::TONE4),
-                KeyCode::D => Some(Bopomofo::TONE5),
-                _ => None,
+                KeyCode::F => self.syllable.update(Bopomofo::TONE2),
+                KeyCode::J => self.syllable.update(Bopomofo::TONE3),
+                KeyCode::K => self.syllable.update(Bopomofo::TONE4),
+                KeyCode::D => self.syllable.update(Bopomofo::TONE5),
+                _ => {
+                    self.syllable.remove_tone();
+                }
             };
-            self.syllable.tone = tone;
             KeyBehavior::Commit
         } else {
             let bopomofo = match key.code {
@@ -161,7 +162,7 @@ impl SyllableEditor for Et26 {
             match bopomofo.kind() {
                 BopomofoKind::Medial => {
                     if bopomofo == Bopomofo::U {
-                        match self.syllable.initial {
+                        match self.syllable.initial() {
                             Some(Bopomofo::J) => {
                                 self.syllable.update(Bopomofo::ZH);
                             }
@@ -170,12 +171,12 @@ impl SyllableEditor for Et26 {
                             }
                             _ => (),
                         }
-                    } else if let Some(Bopomofo::G) = self.syllable.initial {
+                    } else if let Some(Bopomofo::G) = self.syllable.initial() {
                         self.syllable.update(Bopomofo::Q);
                     }
                 }
                 BopomofoKind::Rime if !self.syllable.has_medial() => {
-                    match self.syllable.initial {
+                    match self.syllable.initial() {
                         Some(Bopomofo::J) => {
                             self.syllable.update(Bopomofo::ZH);
                         }

@@ -146,19 +146,19 @@ pub extern "C" fn BopomofoPhoInx(data_ptr: *mut BopomofoData, pho_inx: *mut i32)
     let pho_inx = unsafe { slice::from_raw_parts_mut(pho_inx, 4) };
     let syllable = editor_keymap.editor.read();
 
-    pho_inx[0] = match syllable.initial {
+    pho_inx[0] = match syllable.initial() {
         Some(b) => b.initial_index() as i32,
         None => 0,
     };
-    pho_inx[1] = match syllable.medial {
+    pho_inx[1] = match syllable.medial() {
         Some(b) => b.medial_index() as i32,
         None => 0,
     };
-    pho_inx[2] = match syllable.rime {
+    pho_inx[2] = match syllable.rime() {
         Some(b) => b.rime_index() as i32,
         None => 0,
     };
-    pho_inx[3] = match syllable.tone {
+    pho_inx[3] = match syllable.tone() {
         Some(b) => b.tone_index() as i32,
         None => 0,
     };
@@ -172,19 +172,19 @@ pub extern "C" fn BopomofoPhoInxAlt(data_ptr: *mut BopomofoData, pho_inx: *mut i
     // FIXME
     let syllable = editor_keymap.editor.read();
 
-    pho_inx[0] = match syllable.initial {
+    pho_inx[0] = match syllable.initial() {
         Some(b) => b.initial_index() as i32,
         None => 0,
     };
-    pho_inx[1] = match syllable.medial {
+    pho_inx[1] = match syllable.medial() {
         Some(b) => b.medial_index() as i32,
         None => 0,
     };
-    pho_inx[2] = match syllable.rime {
+    pho_inx[2] = match syllable.rime() {
         Some(b) => b.rime_index() as i32,
         None => 0,
     };
-    pho_inx[3] = match syllable.tone {
+    pho_inx[3] = match syllable.tone() {
         Some(b) => b.tone_index() as i32,
         None => 0,
     };

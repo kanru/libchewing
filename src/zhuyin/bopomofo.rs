@@ -129,25 +129,25 @@ impl Bopomofo {
             TONE1 | TONE2 | TONE3 | TONE4 | TONE5 => BopomofoKind::Tone,
         }
     }
-    pub fn from_initial(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
+    pub const fn from_initial(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
         if index < 1 || (index - 1) as usize >= INITIAL_MAP.len() {
             return Err(ParseBopomofoError::IndexOutOfRange);
         }
         Ok(INITIAL_MAP[(index - 1) as usize])
     }
-    pub fn from_medial(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
+    pub const fn from_medial(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
         if index < 1 || (index - 1) as usize >= MEDIAL_MAP.len() {
             return Err(ParseBopomofoError::IndexOutOfRange);
         }
         Ok(MEDIAL_MAP[(index - 1) as usize])
     }
-    pub fn from_rime(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
+    pub const fn from_rime(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
         if index < 1 || (index - 1) as usize >= RIME_MAP.len() {
             return Err(ParseBopomofoError::IndexOutOfRange);
         }
         Ok(RIME_MAP[(index - 1) as usize])
     }
-    pub fn from_tone(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
+    pub const fn from_tone(index: u16) -> Result<Bopomofo, ParseBopomofoError> {
         if index < 1 || (index - 1) as usize >= TONE_MAP.len() {
             return Err(ParseBopomofoError::IndexOutOfRange);
         }

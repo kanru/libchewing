@@ -1,3 +1,7 @@
+use std::hash::{Hash, Hasher};
+
+use indexmap::IndexSet;
+
 use crate::zhuyin::Syllable;
 
 use super::{
@@ -91,18 +95,16 @@ impl Dictionary for LayeredDictionary {
             Some(d) => d,
             None => return Box::new(std::iter::empty()),
         };
-        let mut phrases = base.lookup_phrase(syllables).collect::<Vec<_>>();
+        let mut phrases = base.lookup_phrase(syllables).map(|p| LookupPhrase(p)).collect::<IndexSet<_>>();
         for d in layers {
             for phrase in d.lookup_phrase(syllables) {
-                match phrases.iter_mut().find(|it| it.phrase == phrase.phrase) {
-                    Some(ph) => *ph = phrase,
-                    None => phrases.push(phrase),
-                }
+                phrases.replace(LookupPhrase(phrase));
             }
         }
         Box::new(
             phrases
                 .into_iter()
+                .map(|p| p.0)
                 .filter(|phrase| !self.is_blocked(&phrase.phrase)),
         )
     }
@@ -164,5 +166,20 @@ impl DictionaryMut for LayeredDictionary {
             }
         }
         Ok(())
+    }
+}
+
+#[derive(Debug, Eq)]
+struct LookupPhrase(Phrase);
+
+impl Hash for LookupPhrase {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.phrase.hash(state);
+    }
+}
+
+impl PartialEq for LookupPhrase {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.phrase == other.0.phrase
     }
 }

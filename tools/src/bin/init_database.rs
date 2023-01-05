@@ -11,7 +11,7 @@ use chewing::{
     },
     zhuyin::{Bopomofo, Syllable},
 };
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -50,6 +50,11 @@ fn main() -> Result<()> {
         .arg(Arg::new("copyright").short('c').default_value("Unknown"))
         .arg(Arg::new("license").short('l').default_value("Unknown"))
         .arg(Arg::new("version").short('r').default_value("1.0.0"))
+        .arg(
+            Arg::new("keep-word-freq")
+                .short('k')
+                .action(ArgAction::SetTrue),
+        )
         .arg(Arg::new("tsi.src").required(true))
         .arg(Arg::new("output").required(true))
         .arg_required_else_help(true)
@@ -62,6 +67,7 @@ fn main() -> Result<()> {
     let copyright: &String = m.get_one("copyright").unwrap();
     let license: &String = m.get_one("license").unwrap();
     let version: &String = m.get_one("version").unwrap();
+    let keep_word_freq: bool = m.get_flag("keep-word-freq");
 
     let mut builder: Box<dyn DictionaryBuilder> = match db_type.as_str() {
         "sqlite" => Box::new(SqliteDictionaryBuilder::new()),
@@ -83,13 +89,16 @@ fn main() -> Result<()> {
         let mut syllables = vec![];
         let line = line?;
         let phrase = line.split_ascii_whitespace().next().unwrap();
-        let freq: u32 = line
-            .split_ascii_whitespace()
-            .nth(1)
-            .unwrap()
-            .parse()
-            .context("unable to parse frequency")
-            .parse_error(line_num, 0)?;
+        let freq: u32 = match phrase.chars().count() {
+            1 if !keep_word_freq => 0,
+            _ => line
+                .split_ascii_whitespace()
+                .nth(1)
+                .unwrap()
+                .parse()
+                .context("unable to parse frequency")
+                .parse_error(line_num, 0)?,
+        };
         for syllable_str in line.split_ascii_whitespace().skip(2) {
             let mut syllable_builder = Syllable::builder();
             if syllable_str.starts_with('#') {

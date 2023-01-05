@@ -72,6 +72,7 @@ const MAX_USER_FREQ: u32 = 99999999;
 
 impl UserFreqEstimate for SqliteUserFreqEstimate {
     fn tick(&mut self) -> Result<(), EstimateError> {
+        // TODO debounce write
         self.conn
             .execute("UPDATE config_v1 SET value = value + 1 WHERE id = 0", [])?;
         self.lifetime =

@@ -56,7 +56,7 @@ impl ChewingConversionEngine {
 
             // If there are phrases that can satisfy all the constraints
             // then pick the one with highest frequency.
-            if phrase.freq() > max_freq {
+            if best_phrase.is_none() || phrase.freq() > max_freq {
                 max_freq = phrase.freq();
                 best_phrase = Some(phrase);
             }
